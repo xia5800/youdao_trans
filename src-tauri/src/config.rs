@@ -1,0 +1,368 @@
+#[cfg(not(debug_assertions))]
+use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+#[cfg(not(debug_assertions))]
+use aes_gcm::{Aes256Gcm, Nonce};
+use serde::{Deserialize, Serialize};
+#[cfg(not(debug_assertions))]
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+#[cfg(not(debug_assertions))]
+const APP_SALT: &[u8] = b"youdao-fanyi-v1";
+#[cfg(not(debug_assertions))]
+const TOKEN_CACHE_SALT: &[u8] = b"youdao-fanyi-ocr-v1";
+
+// ---- Data model ----
+
+#[derive(Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub theme: String,
+    pub config_path: String,
+    pub db_path: String,
+    pub auto_start: bool,
+    pub delay_time: u64,
+    pub volume: u64,
+    pub speed: f64,
+    pub store_records: bool,
+    pub replace_newlines: bool,
+    pub auto_translate: bool,
+    pub auto_translate_delay: u64,
+    pub hotkeys: Hotkeys,
+    pub active_translator: Option<String>,
+    pub translator_keys: HashMap<String, String>,
+    pub active_ocr: Option<String>,
+    pub ocr_keys: HashMap<String, String>,
+    pub close_behavior: String,
+    pub show_screenshot_crosshair: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Hotkeys {
+    #[serde(default = "default_hotkey_translate")]
+    pub translate: String,
+    #[serde(default = "default_hotkey_screenshot")]
+    pub screenshot: String,
+    #[serde(default = "default_hotkey_ocr")]
+    pub ocr: String,
+    #[serde(default = "default_hotkey_selection_translate")]
+    pub selection_translate: String,
+}
+
+fn default_hotkey_translate() -> String {
+    "Ctrl+Enter".into()
+}
+fn default_hotkey_screenshot() -> String {
+    "Alt+W".into()
+}
+fn default_hotkey_ocr() -> String {
+    "Alt+E".into()
+}
+fn default_hotkey_selection_translate() -> String {
+    "Alt+T".into()
+}
+
+impl Default for Hotkeys {
+    fn default() -> Self {
+        Self {
+            translate: default_hotkey_translate(),
+            screenshot: default_hotkey_screenshot(),
+            ocr: default_hotkey_ocr(),
+            selection_translate: default_hotkey_selection_translate(),
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            theme: "system".into(),
+            config_path: String::new(),
+            db_path: String::new(),
+            auto_start: false,
+            delay_time: crate::constants::DEFAULT_DELAY_TIME_MS,
+            volume: 100,
+            speed: 1.0,
+            store_records: true,
+            replace_newlines: false,
+            auto_translate: false,
+            auto_translate_delay: crate::constants::DEFAULT_AUTO_TRANSLATE_DELAY_MS,
+            hotkeys: Hotkeys::default(),
+            active_translator: Some("microsoft_free".to_string()),
+            translator_keys: HashMap::new(),
+            active_ocr: Some("ollama_ocr".to_string()),
+            ocr_keys: HashMap::new(),
+            close_behavior: "ask".into(),
+            show_screenshot_crosshair: true,
+        }
+    }
+}
+
+// ---- File I/O ----
+
+pub fn filename() -> &'static str {
+    #[cfg(debug_assertions)]
+    {
+        "config-dev.json"
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        "config.enc"
+    }
+}
+
+fn data_root() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(crate::constants::APP_DATA_DIR)
+}
+
+pub fn default_config_dir_inner() -> PathBuf {
+    data_root().join("config")
+}
+
+pub fn default_db_dir_inner() -> PathBuf {
+    data_root().join("db")
+}
+
+fn default_path() -> PathBuf {
+    default_config_dir_inner().join(filename())
+}
+
+#[cfg(not(debug_assertions))]
+fn derive_key_with_salt(salt: &[u8]) -> Result<[u8; 32], String> {
+    let uid = machine_uid::get().map_err(|e| format!("machine_uid: {}", e))?;
+    let mut hasher = Sha256::new();
+    hasher.update(uid.as_bytes());
+    hasher.update(salt);
+    Ok(hasher.finalize().into())
+}
+
+#[cfg(not(debug_assertions))]
+fn derive_key() -> Result<[u8; 32], String> {
+    derive_key_with_salt(APP_SALT)
+}
+
+#[cfg(not(debug_assertions))]
+pub fn encrypt_data(plaintext: &[u8]) -> Result<Vec<u8>, String> {
+    use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+    use aes_gcm::Aes256Gcm;
+    let key = derive_key_with_salt(TOKEN_CACHE_SALT)?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("key init: {}", e))?;
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let ciphertext = cipher
+        .encrypt(&nonce, plaintext)
+        .map_err(|e| format!("encrypt: {}", e))?;
+    let mut out = nonce.to_vec();
+    out.extend(ciphertext);
+    Ok(out)
+}
+
+#[cfg(not(debug_assertions))]
+pub fn decrypt_data(raw: &[u8]) -> Result<Vec<u8>, String> {
+    use aes_gcm::aead::{Aead, KeyInit};
+    use aes_gcm::{Aes256Gcm, Nonce};
+    if raw.len() < 12 {
+        return Err("data too short".into());
+    }
+    let key = derive_key_with_salt(TOKEN_CACHE_SALT)?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("key init: {}", e))?;
+    let (nonce_bytes, ciphertext) = raw.split_at(12);
+    let nonce = Nonce::from_slice(nonce_bytes);
+    cipher
+        .decrypt(nonce, ciphertext)
+        .map_err(|e| format!("decrypt: {}", e))
+}
+
+fn resolve_path(custom: Option<&str>) -> PathBuf {
+    match custom {
+        Some(p) => {
+            let path = PathBuf::from(p);
+            // old-style: path includes filename (has extension)
+            // new-style: path is a directory, append filename
+            if path.extension().is_some() {
+                path
+            } else {
+                path.join(filename())
+            }
+        }
+        None => default_path(),
+    }
+}
+
+fn serialize_settings(settings: &Settings) -> Result<String, String> {
+    serde_json::to_string(settings).map_err(|e| format!("serialize: {}", e))
+}
+
+fn parse_settings(json: &str) -> Result<Settings, String> {
+    serde_json::from_str::<Settings>(json).map_err(|e| format!("parse: {}", e))
+}
+
+/// Read raw bytes, decode to JSON string, then parse into Settings.
+/// If the file is empty / corrupted / tampered, it is removed and defaults are returned.
+fn decode_settings(p: &std::path::Path, raw: Vec<u8>) -> Result<String, String> {
+    if raw.is_empty() {
+        let _ = std::fs::remove_file(p);
+        return serialize_settings(&Settings::default());
+    }
+
+    let json_str = {
+        #[cfg(debug_assertions)]
+        {
+            String::from_utf8(raw).map_err(|e| format!("utf8: {}", e))?
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            let key = derive_key()?;
+            let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("key init: {}", e))?;
+            if raw.len() < 12 {
+                let _ = std::fs::remove_file(p);
+                return Err("config file too short, removed".into());
+            }
+            let (nonce_bytes, ciphertext) = raw.split_at(12);
+            let nonce = Nonce::from_slice(nonce_bytes);
+            let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
+                let _ = std::fs::remove_file(p);
+                format!("decrypt failed, removed bad config: {}", e)
+            })?;
+            String::from_utf8(plaintext).map_err(|e| format!("utf8: {}", e))?
+        }
+    };
+
+    // Parse → merge with defaults via #[serde(default)], then re-serialize
+    match parse_settings(&json_str) {
+        Ok(s) => serialize_settings(&s),
+        Err(_) => {
+            let _ = std::fs::remove_file(p);
+            serialize_settings(&Settings::default())
+        }
+    }
+}
+
+pub fn load(path: Option<&str>) -> Result<String, String> {
+    let p = resolve_path(path);
+    if !p.exists() {
+        return serialize_settings(&Settings::default());
+    }
+    let raw = std::fs::read(&p).map_err(|e| format!("read config: {}", e))?;
+    decode_settings(&p, raw)
+}
+
+const CONFIG_CACHE_TTL: Duration = Duration::from_secs(1);
+static CONFIG_CACHE: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
+pub fn invalidate_cache() {
+    if let Ok(mut cache) = CONFIG_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+/// Load config from default path, resolving configPath if set.
+pub fn load_effective() -> Result<String, String> {
+    {
+        if let Ok(cache) = CONFIG_CACHE.lock() {
+            if let Some((json, expiry)) = &*cache {
+                if *expiry > Instant::now() {
+                    return Ok(json.clone());
+                }
+            }
+        }
+    }
+    let json = load(None)?;
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
+        if let Some(path) = v[crate::constants::CFG_CONFIG_PATH].as_str().filter(|p| !p.is_empty()) {
+            if let Ok(actual) = load(Some(path)) {
+                if let Ok(mut cache) = CONFIG_CACHE.lock() {
+                    *cache = Some((actual.clone(), Instant::now() + CONFIG_CACHE_TTL));
+                }
+                return Ok(actual);
+            }
+        }
+    }
+    if let Ok(mut cache) = CONFIG_CACHE.lock() {
+        *cache = Some((json.clone(), Instant::now() + CONFIG_CACHE_TTL));
+    }
+    Ok(json)
+}
+
+pub fn remove(path: Option<&str>) -> Result<(), String> {
+    invalidate_cache();
+    let p = resolve_path(path);
+    if p.exists() {
+        std::fs::remove_file(&p).map_err(|e| format!("remove config: {}", e))?;
+    }
+    Ok(())
+}
+
+pub fn save(json: &str, path: Option<&str>) -> Result<(), String> {
+    invalidate_cache();
+    let p = resolve_path(path);
+
+    // Validate before writing — reject malformed JSON
+    let _ = parse_settings(json)?;
+
+    let data: Vec<u8> = {
+        #[cfg(debug_assertions)]
+        {
+            json.as_bytes().to_vec()
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            let key = derive_key()?;
+            let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("key init: {}", e))?;
+            let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+            let ciphertext = cipher
+                .encrypt(&nonce, json.as_bytes())
+                .map_err(|e| format!("encrypt: {}", e))?;
+            let mut d = nonce.to_vec();
+            d.extend(ciphertext);
+            d
+        }
+    };
+
+    if let Some(parent) = p.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create dir: {}", e))?;
+    }
+    std::fs::write(&p, data).map_err(|e| format!("write config: {}", e))?;
+    Ok(())
+}
+
+// ---- Tauri command wrappers ----
+
+use tauri::command;
+
+#[command]
+pub fn load_config(path: Option<String>) -> Result<String, String> {
+    load(path.as_deref())
+}
+
+#[command]
+pub fn save_config(json: String, path: Option<String>) -> Result<(), String> {
+    save(&json, path.as_deref())
+}
+
+#[command]
+pub fn config_filename() -> String {
+    filename().to_string()
+}
+
+#[command]
+pub fn default_config_dir() -> String {
+    default_config_dir_inner().to_string_lossy().to_string()
+}
+
+#[command]
+pub fn default_db_dir() -> String {
+    default_db_dir_inner().to_string_lossy().to_string()
+}
+
+#[command]
+pub fn remove_config(path: Option<String>) -> Result<(), String> {
+    remove(path.as_deref())
+}
