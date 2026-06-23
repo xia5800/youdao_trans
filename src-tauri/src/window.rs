@@ -1,5 +1,13 @@
 use crate::constants;
+use std::sync::Mutex;
 use tauri::Manager;
+
+pub struct AutostartLaunched(pub Mutex<bool>);
+
+#[tauri::command]
+pub fn is_autostart_launched(state: tauri::State<'_, AutostartLaunched>) -> bool {
+    *state.0.lock().unwrap()
+}
 
 pub fn show_main(app: &tauri::AppHandle) {
     if let Some(main) = app.get_webview_window(constants::WINDOW_MAIN) {

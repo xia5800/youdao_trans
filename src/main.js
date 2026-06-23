@@ -26,7 +26,11 @@ if (appWindow.label === 'main') {
     requestAnimationFrame(() => {
       const { r, g, b } = resolveThemeColor()
       invoke('set_window_bg', { r, g, b }).then(() => {
-        appWindow.show()
+        invoke('is_autostart_launched').then((isAutostart) => {
+          if (!isAutostart) {
+            appWindow.show()
+          }
+        })
       })
     })
   })

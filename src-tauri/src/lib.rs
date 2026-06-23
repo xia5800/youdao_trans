@@ -22,7 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            Some(vec!["--autostart"]),
         ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -59,6 +59,9 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            let is_autostart = std::env::args().any(|arg| arg == "--autostart");
+            app.manage(window::AutostartLaunched(std::sync::Mutex::new(is_autostart)));
 
             app.manage(selection::SelectionState(std::sync::Mutex::new(None)));
             app.manage(ocr::PendingOcrState(std::sync::Mutex::new(None)));
@@ -124,6 +127,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            window::is_autostart_launched,
             window::app_exit,
             window::set_window_bg,
             window::minimize_window,
