@@ -1,7 +1,7 @@
 {
   "name": "youdao-fanyi",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "一款简洁、高效、高颜值的输入、截图、划词翻译软件",
   "license": "MIT",
   "type": "module",

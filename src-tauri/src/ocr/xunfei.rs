@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::fmt::Write;
+#[allow(deprecated)]
 use time::format_description::parse;
 use time::OffsetDateTime;
 
@@ -83,6 +84,7 @@ struct OcrResponseResult {
 
 fn rfc1123_date() -> Result<String, String> {
     let now = OffsetDateTime::now_utc();
+    #[allow(deprecated)]
     let fmt = parse("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] GMT")
         .map_err(|e| format!("日期格式解析失败: {}", e))?;
     now.format(&fmt).map_err(|e| format!("日期格式化失败: {}", e))

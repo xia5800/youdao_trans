@@ -5,7 +5,7 @@ Unicode true
 ManifestDPIAware true
 
 !define PRODUCT_NAME "优道翻译"
-!define PRODUCT_VERSION "1.0.4"
+!define PRODUCT_VERSION "1.0.5"
 !define PRODUCT_PUBLISHER "优道"
 !define PRODUCT_WEB_SITE ""
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\app.exe"
@@ -80,6 +80,12 @@ Section "MainProgram" SEC01
   ; Dictionary database
   SetOutPath "$INSTDIR\models\dict"
   File "..\..\models\dict\ecdict.db"
+
+  ; OCR models
+  SetOutPath "$INSTDIR\models\ocr"
+  File "..\..\models\ocr\PP-OCRv6_medium_det.onnx"
+  File "..\..\models\ocr\PP-OCRv6_medium_rec.onnx"
+  File "..\..\models\ocr\ppocrv6_dict.txt"
   SetOutPath "$INSTDIR"
 
   ; Create start menu shortcuts
@@ -112,6 +118,10 @@ Section Uninstall
   Delete "$INSTDIR\app.exe"
   Delete "$INSTDIR\models\dict\ecdict.db"
   RMDir "$INSTDIR\models\dict"
+  Delete "$INSTDIR\models\ocr\PP-OCRv6_medium_det.onnx"
+  Delete "$INSTDIR\models\ocr\PP-OCRv6_medium_rec.onnx"
+  Delete "$INSTDIR\models\ocr\ppocrv6_dict.txt"
+  RMDir "$INSTDIR\models\ocr"
   RMDir "$INSTDIR\models"
 
   Delete "$SMPROGRAMS\$StartMenuFolder\优道翻译.lnk"

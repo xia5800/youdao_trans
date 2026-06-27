@@ -447,6 +447,8 @@
                     <div class="error-hint" v-if="ollamaOcrKeyError">{{ ollamaOcrKeyError }}</div>
                   </div>
                 </template>
+                <template v-else-if="o.key === 'paddle_ocr'">
+                </template>
                 <template v-else>
                   <div class="password-field">
                     <input :type="fieldVisibility[o.key + '-appid'] ? 'text' : 'password'" class="key-input" placeholder="AppId" style="width: 120px;" v-model="ocrKeys[o.key + '-appid']">
@@ -600,6 +602,7 @@ const translatorList = [
 ]
 
 const ocrList = [
+  { key: 'paddle_ocr', name: 'PaddleOCR', desc: '本地 PaddleOCR 模型识别，无需 API Key，激活即用' },
   { key: 'ollama_ocr', name: 'Ollama OCR', desc: '本地视觉模型 OCR，需部署 Ollama 和视觉模型' },
   { key: 'baidu_ocr', name: '百度云OCR', desc: '通用文字识别(标准版)' },
   { key: 'xunfei', name: '讯飞OCR', desc: '通用文档识别(OCR大模型)' },

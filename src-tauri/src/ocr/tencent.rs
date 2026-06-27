@@ -76,6 +76,7 @@ fn hex_encode(data: &[u8]) -> String {
 fn build_signature(secret_id: &str, secret_key: &str, timestamp: u64, body_json: &str) -> Result<String, String> {
     let dt = time::OffsetDateTime::from_unix_timestamp(timestamp as i64)
         .map_err(|e| format!("时间转换错误: {}", e))?;
+    #[allow(deprecated)]
     let fmt = time::format_description::parse("[year]-[month]-[day]")
         .map_err(|e| format!("日期格式解析失败: {}", e))?;
     let date = dt.format(&fmt).map_err(|e| format!("日期格式化失败: {}", e))?;

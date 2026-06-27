@@ -7,7 +7,7 @@
 ## 功能
 
 - **文本翻译** — 输入文本，在 9 种翻译源之间切换翻译
-- **截图翻译** — 框选屏幕区域，OCR 识别后自动翻译
+- **截图翻译** — 框选屏幕区域，OCR 识别后自动翻译（内置 PaddleOCR 本地引擎）
 - **划词翻译** — 选中任意文字，快捷键触发弹窗翻译
 - **词典查询** — 离线英汉词典，支持自动补全、词形变化、考试标签
 - **翻译记录** — 历史记录自动保存，支持收藏、搜索、筛选、批量管理
@@ -18,7 +18,9 @@
 
 ## 截图
 
-<!-- TODO: 添加截图 -->
+| 翻译页 | 翻译源页 | 词典页 | 翻译记录页 |
+| --- | --- | --- | --- |
+| ![翻译页](img/翻译页.png) | ![翻译源页](img/翻译源页.png) | ![词典页](img/词典页.png) | ![翻译记录页](img/翻译记录页.png) |
 
 ## 下载
 
@@ -122,6 +124,18 @@ ollama pull granite3-dense:8b
 
 ## OCR 源配置
 
+### PaddleOCR（本地离线）
+
+内置 PaddleOCR v6 本地识别引擎，无需联网，开箱即用。模型文件位于 `models/ocr/` 目录下：
+
+| 文件 | 说明 | 下载地址 |
+| --- | --- | --- |
+| `PP-OCRv6_medium_det.onnx` | 文字检测模型 | [HuggingFace](https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det_onnx) |
+| `PP-OCRv6_medium_rec.onnx` | 文字识别模型 | [HuggingFace](https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx) |
+| `ppocrv6_dict.txt` | 字符字典文件 | [GitHub](https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/utils/dict/ppocrv6_dict.txt) |
+
+打包版本已内置模型文件，无需额外下载。如需手动放置，将三个文件放入 `models/ocr/` 目录即可。
+
 ### Ollama OCR
 
 需部署 [Ollama](https://ollama.com/) 并拉取视觉模型，如：
@@ -212,7 +226,7 @@ npm run tauri build  # 使用 Tauri 内置 NSIS 构建安装包
 - **前端**：Vue 3 + Vite + Vue Router
 - **后端**：Rust + Tauri 2.x
 - **数据库**：SQLite (字典 + 历史记录)
-- **OCR**：百度云 / 腾讯云 / 讯飞 API
+- **OCR**：PaddleOCR（本地离线） / 百度云 / 腾讯云 / 讯飞 / Ollama
 - **翻译**：微软 / 百度 / 阿里 / 有道 / 谷歌 API
 
 ## 其它

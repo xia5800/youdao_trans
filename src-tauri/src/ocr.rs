@@ -2,6 +2,7 @@ pub mod baidu;
 pub mod tencent;
 pub mod xunfei;
 pub mod ollama;
+pub mod paddle;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -23,6 +24,7 @@ fn registry() -> &'static HashMap<&'static str, OcrFn> {
         m.insert("tencent", |img, keys| Box::pin(async move { tencent::ocr(&img, &keys).await }));
         m.insert("xunfei", |img, keys| Box::pin(async move { xunfei::ocr(&img, &keys).await }));
         m.insert("ollama_ocr", |img, keys| Box::pin(async move { ollama::ocr(&img, &keys).await }));
+        m.insert("paddle_ocr", |img, keys| Box::pin(async move { paddle::ocr(&img, &keys).await }));
         m
     })
 }
@@ -70,6 +72,7 @@ pub async fn ocr_command(base64_img: String, app: tauri::AppHandle) -> Result<St
     }
 
     let text = run(active_ocr, &base64_img, &ocr_keys).await.map_err(|e| {
+        log::error!("OCR 识别失败 [provider={}]: {}", active_ocr, e);
         let _ = app.emit(constants::EVENT_OCR_ERROR, &e);
         e
     })?;

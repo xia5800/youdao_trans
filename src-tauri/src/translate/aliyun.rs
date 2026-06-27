@@ -125,6 +125,7 @@ fn utc_timestamp(now: &SystemTime) -> Result<String, String> {
         .as_secs() as i64;
     let dt = time::OffsetDateTime::from_unix_timestamp(secs)
         .map_err(|e| format!("时间转换错误: {}", e))?;
+    #[allow(deprecated)]
     let fmt = time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z")
         .map_err(|e| format!("日期格式解析失败: {}", e))?;
     dt.format(&fmt).map_err(|e| format!("日期格式化失败: {}", e))
