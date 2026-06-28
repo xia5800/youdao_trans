@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useTts } from '../composables/useTts.js'
@@ -141,6 +141,11 @@ const targetDropdownOpen = ref(false)
 const { activeTranslator, translatorKeys, autoTranslate, autoTranslateDelay, storeRecords, replaceNewlines } = useSettings()
 const { showToast } = useToast()
 const { useHotkeyListener, hotkeys } = useHotkey()
+const isOcrProcessing = inject('isOcrProcessing', ref(false))
+
+watch(isOcrProcessing, (val) => {
+  if (val) clearText()
+})
 
 const translateCombo = computed(() => hotkeys.value.find(h => h.id === 'translate')?.combo || 'Ctrl+Enter')
 const speaking = ref(null)
@@ -273,6 +278,9 @@ function onClickOutside(e) {
 let unlistenOcr = null
 
 onMounted(async () => {
+  if (isOcrProcessing.value) {
+    clearText()
+  }
   document.addEventListener('click', onClickOutside)
   unlistenOcr = await listen('ocr-result', (event) => {
     const text = event.payload

@@ -7,9 +7,13 @@ export function useToast() {
   function showToast(message, duration = 3000) {
     const id = ++nextId
     toasts.value.push({ id, message })
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       toasts.value = toasts.value.filter(t => t.id !== id)
     }, duration)
+    return () => {
+      clearTimeout(timer)
+      toasts.value = toasts.value.filter(t => t.id !== id)
+    }
   }
 
   return { toasts, showToast }

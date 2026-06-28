@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, provide } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -32,6 +32,8 @@ const router = useRouter()
 const { toasts, showToast } = useToast()
 const { useHotkeyListener } = useHotkey()
 const { load } = useSettings()
+const isOcrProcessing = ref(false)
+provide('isOcrProcessing', isOcrProcessing)
 
 let unlistenError = null
 let unlistenOcrError = null
@@ -77,6 +79,8 @@ onUnmounted(() => {
 async function checkPendingOcr() {
   const pending = await invoke('take_pending_ocr')
   if (!pending) return
+  isOcrProcessing.value = true
+  const dismissOcrToast = showToast('正在识别文字...')
   try {
     const text = await invoke('ocr_command', { base64Img: pending })
     if (text) {
@@ -84,6 +88,9 @@ async function checkPendingOcr() {
     }
   } catch (e) {
     console.error(`OCR 识别失败: ${e}`)
+  } finally {
+    isOcrProcessing.value = false
+    dismissOcrToast()
   }
 }
 
