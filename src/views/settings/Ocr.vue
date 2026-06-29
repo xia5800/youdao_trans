@@ -33,7 +33,7 @@
             </div>
             <div class="detail-field">
               <label>模型名 <span class="required">*</span></label>
-              <input type="text" class="key-input detail-input" :class="{ 'input-error': ollamaOcrKeyError }" placeholder="例如: llama3.2-vision" v-model="ocrKeys['ollama_ocr_model']">
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': ollamaOcrKeyError }" placeholder="例如: maternion/Qianfan-OCR" v-model="ocrKeys['ollama_ocr_model']">
             </div>
             <div class="error-hint" v-if="ollamaOcrKeyError">{{ ollamaOcrKeyError }}</div>
           </div>

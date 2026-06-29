@@ -141,12 +141,12 @@ ollama pull granite3-dense:8b
 需部署 [Ollama](https://ollama.com/) 并拉取视觉模型，如：
 
 ```bash
-ollama pull llama3.2-vision
+ollama pull maternion/Qianfan-OCR
 ```
 
 在设置中填入：
 - `ollama_ocr_base_url` → Ollama 地址（如 `http://localhost:11434`）
-- `ollama_ocr_model` → 视觉模型名（如 `llama3.2-vision`）
+- `ollama_ocr_model` → 视觉模型名（如 `maternion/Qianfan-OCR`）
 
 ### 百度云 OCR
 
