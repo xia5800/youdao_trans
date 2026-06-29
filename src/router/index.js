@@ -18,6 +18,7 @@ const routes = [
       { path: 'advanced', name: 'settings-advanced', component: () => import('../views/settings/Advanced.vue') },
       { path: 'hotkey', name: 'settings-hotkey', component: () => import('../views/settings/Hotkey.vue') },
       { path: 'translator', name: 'settings-translator', component: () => import('../views/settings/Translator.vue') },
+      { path: 'ocr', name: 'settings-ocr', component: () => import('../views/settings/Ocr.vue') },
       { path: 'about', name: 'settings-about', component: () => import('../views/settings/About.vue') },
     ]
   },

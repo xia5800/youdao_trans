@@ -27,6 +27,7 @@ const navItems = [
   { id: 'hotkey', label: '快捷键设置' },
   { id: 'advanced', label: '语音播放设置' },
   { id: 'translator', label: '翻译源设置' },
+  { id: 'ocr', label: 'OCR设置' },
   { id: 'about', label: '关于' }
 ]
 

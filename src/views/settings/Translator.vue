@@ -1,314 +1,245 @@
 <template>
-  <div>
+  <div class="translator-page">
     <div class="section-title">翻译源设置</div>
-
-    <div class="tab-bar">
-      <div class="tab-item" :class="{ active: translatorTab === 'translate' }" @click="translatorTab = 'translate'">翻译源</div>
-      <div class="tab-item" :class="{ active: translatorTab === 'ocr' }" @click="translatorTab = 'ocr'">文字识别 (OCR)</div>
-    </div>
-    <div class="tab-panel">
-    <template v-if="translatorTab === 'translate'">
-      <div class="tab-hint">以下翻译源互斥，只能开启一个</div>
-      <div class="translator-item" v-for="t in translatorList" :key="t.key">
-        <div class="translator-info">
-          <div class="translator-name">{{ t.name }}</div>
-          <div class="translator-desc">{{ t.desc }}</div>
-        </div>
-        <div class="setting-control">
-          <div v-if="t.key === 'ali'" style="display: flex; gap: 6px;" :style="{ display: activeTranslator === t.key ? 'flex' : 'none' }">
-            <div class="password-field">
-              <input :type="fieldVisibility['ali-accesskey'] ? 'text' : 'password'" class="key-input" placeholder="AccessKey" style="width: 120px;" v-model="translatorKeys['ali-accesskey']">
-              <button class="eye-btn" @click="toggleFieldVisibility('ali-accesskey')" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use :href="`/icons.svg#icon-eye-${fieldVisibility['ali-accesskey'] ? 'off' : 'open'}`"></use>
-                </svg>
-              </button>
-            </div>
-            <div class="password-field">
-              <input :type="fieldVisibility['ali-secretkey'] ? 'text' : 'password'" class="key-input" placeholder="SecretKey" style="width: 120px;" v-model="translatorKeys['ali-secretkey']">
-              <button class="eye-btn" @click="toggleFieldVisibility('ali-secretkey')" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use :href="`/icons.svg#icon-eye-${fieldVisibility['ali-secretkey'] ? 'off' : 'open'}`"></use>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <template v-else-if="t.key === 'microsoft_free'">
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'microsoft'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <div class="password-field">
-                  <input :type="fieldVisibility['microsoft'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': microsoftKeyError }" placeholder="密钥Key" v-model="translatorKeys['microsoft']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('microsoft')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <use :href="`/icons.svg#icon-eye-${fieldVisibility['microsoft'] ? 'off' : 'open'}`"></use>
-                    </svg>
-                  </button>
-                </div>
-                <input type="text" class="key-input" :class="{ 'input-error': microsoftKeyError }" placeholder="区域 Region" v-model="translatorKeys['microsoft_region']" style="width: 100px;">
-              </div>
-              <div class="error-hint" v-if="microsoftKeyError">{{ microsoftKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'baidu'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <div class="password-field">
-                  <input :type="fieldVisibility['baidu_appid'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': baiduKeyError }" placeholder="APP ID" v-model="translatorKeys['baidu_appid']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('baidu_appid')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_appid'] ? 'off' : 'open'}`"></use>
-                    </svg>
-                  </button>
-                </div>
-                <div class="password-field">
-                  <input :type="fieldVisibility['baidu_appkey'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': baiduKeyError }" placeholder="APP Key" v-model="translatorKeys['baidu_appkey']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('baidu_appkey')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_appkey'] ? 'off' : 'open'}`"></use>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <div class="error-hint" v-if="baiduKeyError">{{ baiduKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'youdao'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <div class="password-field">
-                  <input :type="fieldVisibility['youdao_appid'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': youdaoKeyError }" placeholder="应用ID" v-model="translatorKeys['youdao_appid']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('youdao_appid')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <use :href="`/icons.svg#icon-eye-${fieldVisibility['youdao_appid'] ? 'off' : 'open'}`"></use>
-                    </svg>
-                  </button>
-                </div>
-                <div class="password-field">
-                  <input :type="fieldVisibility['youdao_appsecret'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': youdaoKeyError }" placeholder="应用密钥" v-model="translatorKeys['youdao_appsecret']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('youdao_appsecret')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <use :href="`/icons.svg#icon-eye-${fieldVisibility['youdao_appsecret'] ? 'off' : 'open'}`"></use>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <div class="error-hint" v-if="youdaoKeyError">{{ youdaoKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'google'">
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'openai'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <div class="password-field">
-                  <input :type="fieldVisibility['openai_key'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': openaiKeyError }" placeholder="API Key" style="width: 120px;" v-model="translatorKeys['openai_key']">
-                  <button class="eye-btn" @click="toggleFieldVisibility('openai_key')" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><use :href="`/icons.svg#icon-eye-${fieldVisibility['openai_key'] ? 'off' : 'open'}`"></use></svg>
-                  </button>
-                </div>
-                <input type="text" class="key-input" :class="{ 'input-error': openaiKeyError }" placeholder="模型名" style="width: 100px;" v-model="translatorKeys['openai_model']">
-                <input type="text" class="key-input" placeholder="接口地址 (可选)" style="width: 140px;" v-model="translatorKeys['openai_endpoint']">
-              </div>
-              <div class="error-hint" v-if="openaiKeyError">{{ openaiKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'ollama'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <input type="text" class="key-input" :class="{ 'input-error': ollamaKeyError }" placeholder="接口地址" style="width: 200px;" v-model="translatorKeys['ollama_base_url']">
-                <input type="text" class="key-input" :class="{ 'input-error': ollamaKeyError }" placeholder="模型名" style="width: 160px;" v-model="translatorKeys['ollama_model']">
-              </div>
-              <div class="error-hint" v-if="ollamaKeyError">{{ ollamaKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <template v-else-if="t.key === 'deeplx'">
-            <div class="microsoft-wrap" :style="{ display: activeTranslator === t.key ? 'block' : 'none' }">
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <input type="text" class="key-input" :class="{ 'input-error': deeplxKeyError }" placeholder="地址" style="width: 200px;" v-model="translatorKeys['deeplx_endpoint']">
-              </div>
-              <div class="error-hint" v-if="deeplxKeyError">{{ deeplxKeyError }}</div>
-            </div>
-            <div class="switch" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
-              <div class="switch-knob"></div>
-            </div>
-          </template>
-          <div v-else-if="t.key !== 'youdao'" class="password-field" :style="{ display: activeTranslator === t.key ? 'flex' : 'none' }">
-            <input :type="fieldVisibility[t.key] ? 'text' : 'password'" class="key-input" :placeholder="t.keyPlaceholder" v-model="translatorKeys[t.key]">
-            <button class="eye-btn" @click="toggleFieldVisibility(t.key)" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <use :href="`/icons.svg#icon-eye-${fieldVisibility[t.key] ? 'off' : 'open'}`"></use>
-              </svg>
-            </button>
-          </div>
-          <div class="switch" v-if="t.key !== 'microsoft_free' && t.key !== 'microsoft' && t.key !== 'baidu' && t.key !== 'youdao' && t.key !== 'google' && t.key !== 'openai' && t.key !== 'ollama' && t.key !== 'deeplx'" :class="{ active: activeTranslator === t.key }" @click="toggleTranslator(t.key)">
+    <div class="translator-layout">
+      <div class="translator-list">
+        <div
+          v-for="t in translatorList"
+          :key="t.key"
+          class="translator-row"
+          :class="{ selected: selectedKey === t.key }"
+          @click="selectedKey = t.key"
+        >
+          <span class="translator-row-name">{{ t.name }}</span>
+          <div class="switch" :class="{ active: activeTranslator === t.key }" @click.stop="toggleTranslator(t.key)">
             <div class="switch-knob"></div>
           </div>
         </div>
       </div>
-    </template>
+      <div class="translator-detail" v-if="selectedTranslator">
+        <div class="detail-desc">{{ selectedTranslator.desc }}</div>
 
-    <template v-if="translatorTab === 'ocr'">
-      <div class="tab-hint">以下OCR源互斥，只能开启一个</div>
-      <div class="translator-item" v-for="o in ocrList" :key="o.key">
-        <div class="translator-info">
-          <div class="translator-name">{{ o.name }}</div>
-          <div class="translator-desc">{{ o.desc }}</div>
-        </div>
-        <div class="setting-control">
-          <div style="display: flex; gap: 6px;" :style="{ display: activeOcr === o.key ? 'flex' : 'none' }">
-            <template v-if="o.key === 'xunfei'">
-              <div class="microsoft-wrap" style="display:block;">
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <div class="password-field">
-                    <input :type="fieldVisibility['xunfei-appid'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="AppId" style="width: 100px;" v-model="ocrKeys['xunfei-appid']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('xunfei-appid')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-appid'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="password-field">
-                    <input :type="fieldVisibility['xunfei-apikey'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="API Key" style="width: 120px;" v-model="ocrKeys['xunfei-apikey']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('xunfei-apikey')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-apikey'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="password-field">
-                    <input :type="fieldVisibility['xunfei-apisecret'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="Secret Key" style="width: 120px;" v-model="ocrKeys['xunfei-apisecret']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('xunfei-apisecret')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-apisecret'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="error-hint" v-if="xunfeiOcrKeyError">{{ xunfeiOcrKeyError }}</div>
-              </div>
-            </template>
-            <template v-else-if="o.key === 'baidu_ocr'">
-              <div class="microsoft-wrap" style="display:block;">
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <div class="password-field">
-                    <input :type="fieldVisibility['baidu_ocr-apikey'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': baiduOcrKeyError }" placeholder="API Key" style="width: 120px;" v-model="ocrKeys['baidu_ocr-apikey']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('baidu_ocr-apikey')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_ocr-apikey'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="password-field">
-                    <input :type="fieldVisibility['baidu_ocr-apisecret'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': baiduOcrKeyError }" placeholder="Secret Key" style="width: 120px;" v-model="ocrKeys['baidu_ocr-apisecret']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('baidu_ocr-apisecret')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_ocr-apisecret'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="error-hint" v-if="baiduOcrKeyError">{{ baiduOcrKeyError }}</div>
-              </div>
-            </template>
-            <template v-else-if="o.key === 'tencent'">
-              <div class="microsoft-wrap" style="display:block;">
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <div class="password-field">
-                    <input :type="fieldVisibility['tencent-secretid'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': tencentOcrKeyError }" placeholder="SecretId" style="width: 120px;" v-model="ocrKeys['tencent-secretid']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('tencent-secretid')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['tencent-secretid'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="password-field">
-                    <input :type="fieldVisibility['tencent-secretkey'] ? 'text' : 'password'" class="key-input" :class="{ 'input-error': tencentOcrKeyError }" placeholder="SecretKey" style="width: 120px;" v-model="ocrKeys['tencent-secretkey']">
-                    <button class="eye-btn" @click="toggleFieldVisibility('tencent-secretkey')" type="button">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <use :href="`/icons.svg#icon-eye-${fieldVisibility['tencent-secretkey'] ? 'off' : 'open'}`"></use>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="error-hint" v-if="tencentOcrKeyError">{{ tencentOcrKeyError }}</div>
-              </div>
-            </template>
-            <template v-else-if="o.key === 'ollama_ocr'">
-              <div class="microsoft-wrap" style="display:block;">
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <input type="text" class="key-input" :class="{ 'input-error': ollamaOcrKeyError }" placeholder="接口地址" style="width: 200px;" v-model="ocrKeys['ollama_ocr_base_url']">
-                  <input type="text" class="key-input" :class="{ 'input-error': ollamaOcrKeyError }" placeholder="模型名" style="width: 160px;" v-model="ocrKeys['ollama_ocr_model']">
-                </div>
-                <div class="error-hint" v-if="ollamaOcrKeyError">{{ ollamaOcrKeyError }}</div>
-              </div>
-            </template>
-            <template v-else-if="o.key === 'paddle_ocr'">
-            </template>
-            <template v-else>
+        <template v-if="selectedTranslator.key === 'microsoft_free' || selectedTranslator.key === 'google'">
+          <div class="detail-fields">
+            <div class="detail-no-config">无需额外配置，直接启用即可使用。</div>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'microsoft'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>密钥 Key <span class="required">*</span></label>
               <div class="password-field">
-                <input :type="fieldVisibility[o.key + '-appid'] ? 'text' : 'password'" class="key-input" placeholder="AppId" style="width: 120px;" v-model="ocrKeys[o.key + '-appid']">
-                <button class="eye-btn" @click="toggleFieldVisibility(o.key + '-appid')" type="button">
+                <input :type="fieldVisibility['microsoft'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': microsoftKeyError }" placeholder="请输入密钥 Key" v-model="translatorKeys['microsoft']">
+                <button class="eye-btn" @click="toggleFieldVisibility('microsoft')" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility[o.key + '-appid'] ? 'off' : 'open'}`"></use>
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['microsoft'] ? 'off' : 'open'}`"></use>
                   </svg>
                 </button>
               </div>
+            </div>
+            <div class="detail-field">
+              <label>区域 Region <span class="required">*</span></label>
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': microsoftKeyError }" placeholder="例如: eastasia" v-model="translatorKeys['microsoft_region']">
+            </div>
+            <div class="error-hint" v-if="microsoftKeyError">{{ microsoftKeyError }}</div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>前往 <a class="link" @click.prevent="openUrl('https://portal.azure.com')">Azure Portal</a> 创建 Translator 资源，在"密钥和终结点"页面可以获取密钥 Key 和区域 Region。</p>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'baidu'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>APP ID <span class="required">*</span></label>
               <div class="password-field">
-                <input :type="fieldVisibility[o.key + '-appkey'] ? 'text' : 'password'" class="key-input" placeholder="AppKey" style="width: 120px;" v-model="ocrKeys[o.key + '-appkey']">
-                <button class="eye-btn" @click="toggleFieldVisibility(o.key + '-appkey')" type="button">
+                <input :type="fieldVisibility['baidu_appid'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': baiduKeyError }" placeholder="请输入 APP ID" v-model="translatorKeys['baidu_appid']">
+                <button class="eye-btn" @click="toggleFieldVisibility('baidu_appid')" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility[o.key + '-appkey'] ? 'off' : 'open'}`"></use>
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_appid'] ? 'off' : 'open'}`"></use>
                   </svg>
                 </button>
               </div>
-            </template>
+            </div>
+            <div class="detail-field">
+              <label>APP Key <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['baidu_appkey'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': baiduKeyError }" placeholder="请输入 APP Key" v-model="translatorKeys['baidu_appkey']">
+                <button class="eye-btn" @click="toggleFieldVisibility('baidu_appkey')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_appkey'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="error-hint" v-if="baiduKeyError">{{ baiduKeyError }}</div>
           </div>
-          <div class="switch" :class="{ active: activeOcr === o.key }" @click="toggleOcr(o.key)">
-            <div class="switch-knob"></div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>前往 <a class="link" @click.prevent="openUrl('https://fanyi-api.baidu.com')">百度翻译开放平台</a> 注册开发者账号，创建应用后即可获取 APP ID 和 APP Key。</p>
           </div>
-        </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'youdao'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>应用 ID <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['youdao_appid'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': youdaoKeyError }" placeholder="请输入应用 ID" v-model="translatorKeys['youdao_appid']">
+                <button class="eye-btn" @click="toggleFieldVisibility('youdao_appid')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['youdao_appid'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>应用密钥 <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['youdao_appsecret'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': youdaoKeyError }" placeholder="请输入应用密钥" v-model="translatorKeys['youdao_appsecret']">
+                <button class="eye-btn" @click="toggleFieldVisibility('youdao_appsecret')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['youdao_appsecret'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="error-hint" v-if="youdaoKeyError">{{ youdaoKeyError }}</div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>前往 <a class="link" @click.prevent="openUrl('https://ai.youdao.com')">有道智云</a> 注册开发者账号，创建文本翻译应用后获取应用 ID 和应用密钥。</p>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'openai'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>API Key <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['openai_key'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': openaiKeyError }" placeholder="sk-..." v-model="translatorKeys['openai_key']">
+                <button class="eye-btn" @click="toggleFieldVisibility('openai_key')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['openai_key'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>模型名 <span class="required">*</span></label>
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': openaiKeyError }" placeholder="例如: gpt-4o-mini" v-model="translatorKeys['openai_model']">
+            </div>
+            <div class="detail-field">
+              <label>接口地址</label>
+              <input type="text" class="key-input detail-input" placeholder="可选，默认 https://api.openai.com" v-model="translatorKeys['openai_endpoint']">
+            </div>
+            <div class="error-hint" v-if="openaiKeyError">{{ openaiKeyError }}</div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>前往 <a class="link" @click.prevent="openUrl('https://platform.openai.com')">OpenAI Platform</a> 的 API Keys 页面创建 API Key，模型名可在模型列表中查看。如使用代理或中转服务，可修改接口地址。</p>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'ollama'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>接口地址 <span class="required">*</span></label>
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': ollamaKeyError }" placeholder="例如: http://localhost:11434" v-model="translatorKeys['ollama_base_url']">
+            </div>
+            <div class="detail-field">
+              <label>模型名 <span class="required">*</span></label>
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': ollamaKeyError }" placeholder="例如: llama3.2" v-model="translatorKeys['ollama_model']">
+            </div>
+            <div class="error-hint" v-if="ollamaKeyError">{{ ollamaKeyError }}</div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>确保已部署 Ollama 服务并拉取了翻译模型。可在 Ollama 官网查看支持的模型列表。</p>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'deeplx'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>接口地址 <span class="required">*</span></label>
+              <input type="text" class="key-input detail-input" :class="{ 'input-error': deeplxKeyError }" placeholder="例如: http://localhost:1188" v-model="translatorKeys['deeplx_endpoint']">
+            </div>
+            <div class="error-hint" v-if="deeplxKeyError">{{ deeplxKeyError }}</div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>需自行部署 DeepLX 服务，部署成功后填写服务地址即可使用。</p>
+          </div>
+        </template>
+
+        <template v-else-if="selectedTranslator.key === 'ali'">
+          <div class="detail-fields">
+            <div class="detail-field">
+              <label>AccessKey <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['ali-accesskey'] ? 'text' : 'password'" class="key-input detail-input" placeholder="请输入 AccessKey" v-model="translatorKeys['ali-accesskey']">
+                <button class="eye-btn" @click="toggleFieldVisibility('ali-accesskey')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['ali-accesskey'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="detail-field">
+              <label>SecretKey <span class="required">*</span></label>
+              <div class="password-field">
+                <input :type="fieldVisibility['ali-secretkey'] ? 'text' : 'password'" class="key-input detail-input" placeholder="请输入 SecretKey" v-model="translatorKeys['ali-secretkey']">
+                <button class="eye-btn" @click="toggleFieldVisibility('ali-secretkey')" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['ali-secretkey'] ? 'off' : 'open'}`"></use>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="detail-help">
+            <div class="detail-help-title">如何获取：</div>
+            <p>前往 <a class="link" @click.prevent="openUrl('https://aliyun.com')">阿里云控制台</a> 的 RAM 访问控制中创建 AccessKey。</p>
+          </div>
+        </template>
       </div>
-    </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { useSettings } from '../../composables/useSettings.js'
+import { useToast } from '../../composables/useToast.js'
 
-const {
-  settings,
-  activeTranslator,
-  activeOcr,
-  translatorKeys,
-  ocrKeys,
-} = useSettings()
+const { settings, activeTranslator, translatorKeys, configPath } = useSettings()
+const { showToast } = useToast()
 
-const translatorTab = ref('translate')
+const lastToastTime = ref(0)
+const lastToastMsg = ref('')
+
+function showToastOnce(msg) {
+  const now = Date.now()
+  if (msg === lastToastMsg.value && now - lastToastTime.value < 2000) return
+  lastToastTime.value = now
+  lastToastMsg.value = msg
+  showToast(msg)
+}
+
+function openUrl(url) {
+  import('@tauri-apps/plugin-shell').then(({ open }) => { open(url) })
+}
 
 const translatorList = [
   { key: 'microsoft_free', name: '微软翻译（免费）', desc: 'Edge 接口，无需密钥，国内需代理' },
@@ -322,24 +253,15 @@ const translatorList = [
   { key: 'youdao', name: '有道翻译', desc: '有道智云翻译，老牌翻译服务' },
 ]
 
-const ocrList = [
-  { key: 'paddle_ocr', name: 'PaddleOCR', desc: '本地 PaddleOCR 模型识别，无需 API Key，激活即用' },
-  { key: 'ollama_ocr', name: 'Ollama OCR', desc: '本地视觉模型 OCR，需部署 Ollama 和视觉模型' },
-  { key: 'baidu_ocr', name: '百度云OCR', desc: '通用文字识别(标准版)' },
-  { key: 'xunfei', name: '讯飞OCR', desc: '通用文档识别(OCR大模型)' },
-  { key: 'tencent', name: '腾讯云OCR', desc: '通用文字识别Agent(RecognizeAgent)' }
-]
+const selectedKey = ref(activeTranslator.value || translatorList[0].key)
+const selectedTranslator = computed(() => translatorList.find(t => t.key === selectedKey.value))
 
 const microsoftKeyError = ref('')
 const baiduKeyError = ref('')
 const youdaoKeyError = ref('')
-const baiduOcrKeyError = ref('')
-const xunfeiOcrKeyError = ref('')
-const tencentOcrKeyError = ref('')
 const openaiKeyError = ref('')
 const ollamaKeyError = ref('')
 const deeplxKeyError = ref('')
-const ollamaOcrKeyError = ref('')
 
 watch([() => translatorKeys.value['microsoft'], () => translatorKeys.value['microsoft_region']], ([key, region]) => {
   const filled = k => k && k.trim()
@@ -365,33 +287,6 @@ watch([() => translatorKeys.value['youdao_appid'], () => translatorKeys.value['y
     youdaoKeyError.value = '应用ID和应用密钥必须同时填写'
   } else {
     youdaoKeyError.value = ''
-  }
-})
-
-watch([() => ocrKeys.value['baidu_ocr-apikey'], () => ocrKeys.value['baidu_ocr-apisecret'], activeOcr], ([apikey, apisecret, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'baidu_ocr' && (!filled(apikey) || !filled(apisecret))) {
-    baiduOcrKeyError.value = 'API Key 和 Secret Key 必须同时填写'
-  } else {
-    baiduOcrKeyError.value = ''
-  }
-})
-
-watch([() => ocrKeys.value['xunfei-appid'], () => ocrKeys.value['xunfei-apikey'], () => ocrKeys.value['xunfei-apisecret'], activeOcr], ([appid, apikey, apisecret, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'xunfei' && (!filled(appid) || !filled(apikey) || !filled(apisecret))) {
-    xunfeiOcrKeyError.value = 'AppId、API Key 和 Secret Key 必须同时填写'
-  } else {
-    xunfeiOcrKeyError.value = ''
-  }
-})
-
-watch([() => ocrKeys.value['tencent-secretid'], () => ocrKeys.value['tencent-secretkey'], activeOcr], ([secretid, secretkey, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'tencent' && (!filled(secretid) || !filled(secretkey))) {
-    tencentOcrKeyError.value = 'SecretId 和 SecretKey 必须同时填写'
-  } else {
-    tencentOcrKeyError.value = ''
   }
 })
 
@@ -422,15 +317,6 @@ watch([() => translatorKeys.value['deeplx_endpoint'], activeTranslator], ([endpo
   }
 })
 
-watch([() => ocrKeys.value['ollama_ocr_base_url'], () => ocrKeys.value['ollama_ocr_model'], activeOcr], ([url, model, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'ollama_ocr' && (!filled(url) || !filled(model))) {
-    ollamaOcrKeyError.value = '接口地址和模型名必须填写'
-  } else {
-    ollamaOcrKeyError.value = ''
-  }
-})
-
 const fieldVisibility = reactive({})
 
 function toggleFieldVisibility(id) {
@@ -452,23 +338,6 @@ function clearTranslatorVisibility(key) {
   }
 }
 
-function clearOcrVisibility(key) {
-  if (key === 'xunfei') {
-    fieldVisibility['xunfei-appid'] = false
-    fieldVisibility['xunfei-apikey'] = false
-    fieldVisibility['xunfei-apisecret'] = false
-  } else if (key === 'baidu_ocr') {
-    fieldVisibility['baidu_ocr-apikey'] = false
-    fieldVisibility['baidu_ocr-apisecret'] = false
-  } else if (key === 'tencent') {
-    fieldVisibility['tencent-secretid'] = false
-    fieldVisibility['tencent-secretkey'] = false
-  } else {
-    fieldVisibility[key + '-appid'] = false
-    fieldVisibility[key + '-appkey'] = false
-  }
-}
-
 function toggleTranslator(key) {
   if (activeTranslator.value && activeTranslator.value !== key) {
     clearTranslatorVisibility(activeTranslator.value)
@@ -476,91 +345,219 @@ function toggleTranslator(key) {
   activeTranslator.value = activeTranslator.value === key ? null : key
 }
 
-function toggleOcr(key) {
-  if (activeOcr.value && activeOcr.value !== key) {
-    clearOcrVisibility(activeOcr.value)
+async function saveConfig() {
+  const filled = v => v && v.trim()
+  const key = selectedKey.value
+
+  if (key === 'microsoft') {
+    const k = translatorKeys.value['microsoft']
+    const r = translatorKeys.value['microsoft_region']
+    if ((filled(k) && !filled(r)) || (!filled(k) && filled(r))) {
+      showToastOnce('密钥 Key 和区域 Region 必须同时填写')
+      return
+    }
+  } else if (key === 'baidu') {
+    const a = translatorKeys.value['baidu_appid']
+    const k = translatorKeys.value['baidu_appkey']
+    if ((filled(a) && !filled(k)) || (!filled(a) && filled(k))) {
+      showToastOnce('APP ID 和 APP Key 必须同时填写')
+      return
+    }
+  } else if (key === 'youdao') {
+    const a = translatorKeys.value['youdao_appid']
+    const s = translatorKeys.value['youdao_appsecret']
+    if ((filled(a) && !filled(s)) || (!filled(a) && filled(s))) {
+      showToastOnce('应用 ID 和应用密钥必须同时填写')
+      return
+    }
+  } else if (key === 'openai') {
+    const k = translatorKeys.value['openai_key']
+    const m = translatorKeys.value['openai_model']
+    if (!filled(k) || !filled(m)) {
+      showToastOnce('API Key 和模型名必须填写')
+      return
+    }
+  } else if (key === 'ollama') {
+    const u = translatorKeys.value['ollama_base_url']
+    const m = translatorKeys.value['ollama_model']
+    if (!filled(u) || !filled(m)) {
+      showToastOnce('接口地址和模型名必须填写')
+      return
+    }
+  } else if (key === 'deeplx') {
+    const e = translatorKeys.value['deeplx_endpoint']
+    if (!filled(e)) {
+      showToastOnce('接口地址必须填写')
+      return
+    }
   }
-  activeOcr.value = activeOcr.value === key ? null : key
+
+  try {
+    const path = configPath.value || null
+    await invoke('save_config', { json: JSON.stringify(settings), path })
+    showToastOnce('已保存')
+  } catch (e) {
+    showToast(`保存失败: ${e}`)
+  }
 }
 </script>
 
 <style scoped>
-.translator-item {
+.translator-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.translator-layout {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.translator-list {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-strong);
+  background: var(--bg-sidebar);
+  border-radius: 8px 0 0 8px;
+  padding: 8px 0;
+}
+
+.translator-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-  gap: 10px;
+  padding: 10px 12px;
+  cursor: default;
+  transition: background 0.15s;
+  gap: 8px;
 }
 
-.translator-info {
+.translator-row:hover {
+  background: var(--bg-hover);
+}
+
+.translator-row.selected {
+  background: var(--bg-active);
+}
+
+.translator-row-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.translator-detail {
   flex: 1;
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border-radius: 0 8px 8px 0;
+  overflow-y: auto;
 }
 
-.translator-name {
+.detail-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-field label {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
-.translator-desc {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
+.required {
+  color: #e74c3c;
 }
 
-.tab-bar {
+.detail-input {
+  width: 100%;
+  max-width: 360px;
+  box-sizing: border-box;
+}
+
+.translator-detail .password-field {
   display: flex;
-  gap: 4px;
-  padding: 6px 4px 0 4px;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border-strong);
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  width: 100%;
+  max-width: 360px;
 }
 
-.tab-item {
-  padding: 6px 16px;
-  font-size: 14px;
-  color: var(--text-secondary);
+.translator-detail .password-field .key-input {
+  flex: 1;
+  width: auto;
+}
+
+.detail-no-config {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 20px 0;
+}
+
+.btn-save {
+  margin-top: 20px;
+  padding: 8px 28px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
   cursor: default;
-  border-radius: 6px 6px 0 0;
-  border: 1px solid transparent;
-  border-bottom: none;
-  margin-bottom: 0;
-  user-select: none;
-  transition: background 0.15s, color 0.15s;
+  transition: opacity 0.2s;
 }
 
-.tab-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.btn-save:hover {
+  opacity: 0.85;
 }
 
-.tab-item.active {
-  color: var(--accent);
-  font-weight: 500;
-  background: var(--bg-card);
-  border-color: var(--border-strong);
-  border-bottom-color: var(--bg-card);
-  transform: translateY(-1px);
+.detail-help {
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.7;
 }
 
-.tab-panel {
-  border: 1px solid var(--border-strong);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  padding: 14px 18px 10px;
-  background: var(--bg-card);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+.detail-help-title {
+  font-weight: 600;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
-.tab-hint {
-  margin-bottom: 10px;
-  font-size: 11px;
-  color: var(--text-tertiary);
+.detail-help .link {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.detail-help .link:hover {
+  text-decoration: underline;
+}
+
+.detail-help p {
+  margin: 0;
 }
 </style>
