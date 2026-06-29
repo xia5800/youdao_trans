@@ -221,25 +221,10 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useSettings } from '../../composables/useSettings.js'
-import { useToast } from '../../composables/useToast.js'
+import { useUtils } from '../../composables/useUtils.js'
 
 const { settings, activeTranslator, translatorKeys, configPath } = useSettings()
-const { showToast } = useToast()
-
-const lastToastTime = ref(0)
-const lastToastMsg = ref('')
-
-function showToastOnce(msg) {
-  const now = Date.now()
-  if (msg === lastToastMsg.value && now - lastToastTime.value < 2000) return
-  lastToastTime.value = now
-  lastToastMsg.value = msg
-  showToast(msg)
-}
-
-function openUrl(url) {
-  import('@tauri-apps/plugin-shell').then(({ open }) => { open(url) })
-}
+const { showToastOnce, openUrl } = useUtils()
 
 const translatorList = [
   { key: 'microsoft_free', name: '微软翻译（免费）', desc: 'Edge 接口，无需密钥，国内需代理' },
@@ -339,6 +324,7 @@ function clearTranslatorVisibility(key) {
 }
 
 function toggleTranslator(key) {
+  selectedKey.value = key
   if (activeTranslator.value && activeTranslator.value !== key) {
     clearTranslatorVisibility(activeTranslator.value)
   }

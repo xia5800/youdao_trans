@@ -1,43 +1,119 @@
 <template>
   <div class="about-container">
-    <div class="about-logo">Y</div>
-    <div class="about-name">优道翻译</div>
-    <div class="about-subtitle">不止翻译，更是词典</div>
-    <div class="about-version">版本 v{{ version }}</div>
+    <div class="about-hero">
+      <div class="about-logo">Y</div>
+      <div class="about-name">优道翻译</div>
+      <div class="about-subtitle">不止翻译，更是词典</div>
+      <div class="about-version">版本 v{{ version }}</div>
+    </div>
+
+    <div class="about-section">
+      <div class="section-line"></div>
+      <div class="section-label">核心功能</div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card" v-for="f in features" :key="f.title">
+        <div class="feature-icon" v-html="f.icon"></div>
+        <div class="feature-title">{{ f.title }}</div>
+        <div class="feature-desc">{{ f.desc }}</div>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <div class="section-line"></div>
+      <div class="section-label">技术栈</div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="tech-row">
+      <span class="tech-badge" v-for="t in techList" :key="t">{{ t }}</span>
+      <span class="tech-badge tech-etc">...</span>
+    </div>
+
     <div class="about-copyright">© 2026 GCC. All rights reserved.</div>
   </div>
 </template>
 
 <script setup>
 import { version } from '../../../package.json'
+
+const features = [
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+    title: '多引擎翻译',
+    desc: '聚合百度、有道、微软、OpenAI 等九大翻译引擎，自由切换'
+  },
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    title: '截图 OCR',
+    desc: '支持百度云、讯飞、腾讯云 OCR 及本地 PaddleOCR 模型'
+  },
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>',
+    title: '划词翻译',
+    desc: '鼠标选中即译，悬浮窗展示结果，一键复制朗读'
+  },
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    title: '词典查询',
+    desc: '输入即查，展示音标、释义、例句，支持收藏生词'
+  },
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    title: '语音朗读',
+    desc: 'TTS 朗读翻译结果，支持语速调节和自动发音'
+  },
+  {
+    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+    title: '历史记录',
+    desc: '自动保存翻译记录，支持搜索、收藏、批量管理'
+  }
+]
+
+const techList = ['Tauri 2', 'Rust', 'Vue 3', 'Vite', 'SQLite']
 </script>
 
 <style scoped>
 .about-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
+  height: 100%;
+  overflow: hidden;
+  padding: 20px 24px;
+  gap: 16px;
+}
+
+/* Hero */
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .about-logo {
-  width: 60px;
-  height: 60px;
-  background: var(--accent);
-  border-radius: 20px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 34px;
   font-weight: 700;
   color: var(--text-inverse);
-  margin-bottom: 20px;
-  box-shadow: 0 8px 20px rgba(45, 122, 255, 0.3);
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(45, 122, 255, 0.35);
 }
 
 .about-name {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -46,17 +122,126 @@ import { version } from '../../../package.json'
 .about-subtitle {
   font-size: 12px;
   color: var(--text-tertiary);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .about-version {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
+  background: var(--bg-hover);
+  padding: 2px 10px;
+  border-radius: 10px;
 }
 
-.about-copyright {
-  margin-top: 24px;
+/* Section divider */
+.about-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+}
+
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border-strong), transparent);
+}
+
+.section-label {
   font-size: 11px;
-  color: var(--scrollbar-thumb);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+/* Feature grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  position: relative;
+  z-index: 1;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.feature-card:hover {
+  border-color: var(--accent-transparent);
+  box-shadow: 0 4px 16px rgba(45, 122, 255, 0.08);
+}
+
+.feature-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--accent-transparent);
+  color: var(--accent);
+}
+
+.feature-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.feature-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+/* Tech stack */
+.tech-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+}
+
+.tech-badge {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+
+.tech-badge:hover {
+  background: var(--accent-transparent);
+  color: var(--accent);
+  border-color: var(--accent-transparent);
+}
+
+/* Copyright */
+.about-copyright {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  position: relative;
+  z-index: 1;
+  padding-top: 4px;
 }
 </style>
