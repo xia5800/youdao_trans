@@ -43,16 +43,7 @@ if (-not (Test-Path -LiteralPath $dbFile)) {
 $dbSize = [math]::Round((Get-Item $dbFile).Length / 1MB, 2)
 Write-Host "  ecdict.db: $dbSize MB" -ForegroundColor Green
 
-$ocrDir = Join-Path $PSScriptRoot "models\ocr\PaddleOCR"
-$ocrFiles = @("PP-OCRv6_medium_det.onnx", "PP-OCRv6_medium_rec.onnx", "ppocrv6_dict.txt")
-foreach ($file in $ocrFiles) {
-    $ocrFile = Join-Path $ocrDir $file
-    if (-not (Test-Path -LiteralPath $ocrFile)) {
-        Write-Error "$file not found at $ocrFile"
-        exit 1
-    }
-    Write-Host "  $file : $([math]::Round((Get-Item $ocrFile).Length / 1MB, 2)) MB" -ForegroundColor Green
-}
+Write-Host "  OCR models: 在线下载，不打包" -ForegroundColor Yellow
 
 # Step 5: Create output directory
 $outDir = Join-Path $PSScriptRoot "dist-installer"

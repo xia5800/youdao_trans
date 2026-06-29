@@ -81,12 +81,7 @@ Section "MainProgram" SEC01
   SetOutPath "$INSTDIR\models\dict"
   File "..\..\models\dict\ecdict.db"
 
-  ; OCR models
-  SetOutPath "$INSTDIR\models\ocr\PaddleOCR"
-  File "..\..\models\ocr\PaddleOCR\PP-OCRv6_medium_det.onnx"
-  File "..\..\models\ocr\PaddleOCR\PP-OCRv6_medium_rec.onnx"
-  File "..\..\models\ocr\PaddleOCR\ppocrv6_dict.txt"
-  SetOutPath "$INSTDIR"
+  ; OCR models are downloaded on demand ― not bundled
 
   ; Create start menu shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -118,10 +113,6 @@ Section Uninstall
   Delete "$INSTDIR\app.exe"
   Delete "$INSTDIR\models\dict\ecdict.db"
   RMDir "$INSTDIR\models\dict"
-  Delete "$INSTDIR\models\ocr\PaddleOCR\PP-OCRv6_medium_det.onnx"
-  Delete "$INSTDIR\models\ocr\PaddleOCR\PP-OCRv6_medium_rec.onnx"
-  Delete "$INSTDIR\models\ocr\PaddleOCR\ppocrv6_dict.txt"
-  RMDir "$INSTDIR\models\ocr\PaddleOCR"
   RMDir "$INSTDIR\models\ocr"
   RMDir "$INSTDIR\models"
 

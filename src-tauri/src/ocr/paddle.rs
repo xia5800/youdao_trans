@@ -72,9 +72,25 @@ fn models_dir() -> PathBuf {
         })
 }
 
+/// Where downloaded model files land (dev path preferred when available).
+fn download_dir() -> PathBuf {
+    let dev_path = {
+        let mut p = PathBuf::from(CARGO_DIR);
+        p.pop();
+        p.join("models").join("ocr").join(PADDLE_DIR)
+    };
+    // If CARGO_MANIFEST_DIR still exists at runtime we are in development;
+    // download into the project tree so files are visible to the developer.
+    if PathBuf::from(CARGO_DIR).exists() {
+        dev_path
+    } else {
+        models_data_dir()
+    }
+}
+
 /// The three files PaddleOCR needs, as generic [`DownloadSpec`]s.
 pub fn download_specs() -> Vec<DownloadSpec> {
-    let dest = models_data_dir();
+    let dest = download_dir();
     vec![
         DownloadSpec {
             file_name: "PP-OCRv6_medium_det.onnx".into(),
