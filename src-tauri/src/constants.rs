@@ -16,7 +16,7 @@ pub const EVENT_SCREENSHOT_READY: &str = "screenshot-ready";
 pub const ROUTE_TRANSLATE: &str = "/translate";
 pub const ROUTE_DICTIONARY: &str = "/dictionary";
 pub const ROUTE_SETTINGS: &str = "/settings";
-pub const ROUTE_SETTINGS_HOTKEY: &str = "/settings?section=hotkey";
+pub const ROUTE_SETTINGS_HOTKEY: &str = "/settings/hotkey";
 
 pub const APP_NAME: &str = "优道翻译";
 pub const APP_DATA_DIR: &str = "youdao-fanyi";
