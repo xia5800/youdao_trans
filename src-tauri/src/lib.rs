@@ -2,6 +2,7 @@ mod capture;
 mod config;
 mod constants;
 mod dict;
+mod download;
 mod history;
 mod hotkey;
 mod ocr;
@@ -153,9 +154,13 @@ pub fn run() {
             ocr::take_pending_ocr,
             ocr::finish_ocr_screenshot,
             ocr::ocr_command,
+            ocr::check_ocr_models_state,
+            ocr::ocr_models_data_dir,
+            ocr::download_ocr_models,
+            ocr::retry_download_ocr_file,
+            translate::translate_command,
             dict::dict_suggestions,
             dict::dict_lookup,
-            translate::translate_command,
             history::save_history,
             history::load_history,
             history::delete_history,

@@ -20,8 +20,68 @@
         <div class="detail-desc">{{ selectedOcr.desc }}</div>
 
         <template v-if="selectedOcr.key === 'paddle_ocr'">
-          <div class="detail-fields">
-            <div class="detail-no-config">无需额外配置，直接启用即可使用。</div>
+          <div v-if="!allModelsExist">
+            <div class="detail-fields">
+              <div class="detail-field">
+                <label>HuggingFace 镜像</label>
+                <div class="toggle-row">
+                  <div class="switch" :class="{ active: settings.useHuggingFaceMirror }" @click="settings.useHuggingFaceMirror = !settings.useHuggingFaceMirror">
+                    <div class="switch-knob"></div>
+                  </div>
+                  <span class="toggle-label">使用镜像站点（hf-mirror.com）下载模型</span>
+                </div>
+              </div>
+              <div class="detail-field">
+                <label>GitHub 加速</label>
+                <div class="toggle-row">
+                  <div class="switch" :class="{ active: settings.useGitHubMirror }" @click="settings.useGitHubMirror = !settings.useGitHubMirror">
+                    <div class="switch-knob"></div>
+                  </div>
+                  <span class="toggle-label">使用加速源（mirrors-us01.git-zh.com）下载字典文件</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="modelStatus" class="model-status-section">
+              <div class="detail-desc" style="margin-top:16px;margin-bottom:12px;">模型文件状态</div>
+              <div v-for="(exists, name) in modelStatus" :key="name" class="model-file-row">
+                <span class="model-file-name">{{ name }}</span>
+                <span v-if="exists" class="model-status-ok">✓ 已存在</span>
+                <span v-else class="model-status-missing">✗ 未找到</span>
+              </div>
+
+              <template v-if="downloading">
+                <div class="download-section">
+                  <div class="download-title">正在下载模型文件...</div>
+                  <div v-for="dl in downloadList" :key="dl.fileName" class="download-file-item">
+                    <div class="download-file-header">
+                      <span class="download-file-name">{{ dl.fileName }}</span>
+                      <span v-if="dl.status === 'downloading' && dl.total > 0" class="download-percent">{{ Math.round(dl.downloaded / dl.total * 100) }}%</span>
+                      <span v-else-if="dl.status === 'downloading'" class="download-percent">下载中...</span>
+                      <span v-else-if="dl.status === 'completed'" class="download-status-completed">已完成</span>
+                      <span v-else-if="dl.status === 'error'" class="download-status-error">失败</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                      <div class="progress-bar-fill" :class="{ indeterminate: dl.total === 0 }" :style="dl.total > 0 ? { width: Math.round(dl.downloaded / dl.total * 100) + '%' } : {}"></div>
+                    </div>
+                    <div v-if="dl.status === 'error'" class="download-retry-row">
+                      <button class="btn-retry" @click="retryDownload(dl.fileName)">重新下载</button>
+                      <span class="download-error-msg">{{ dl.errorMsg }}</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <button class="btn-download" @click="startDownload">下载缺失模型</button>
+                <div v-if="downloadError" class="download-error-msg" style="margin-top:8px;">{{ downloadError }}</div>
+              </template>
+            </div>
+          </div>
+
+          <div class="detail-no-config" v-else>
+            <div>模型文件已就绪，可直接启用使用。</div>
+            <div v-if="modelsDir" class="models-dir-path">当前模型位置：{{ modelsDir }}</div>
           </div>
         </template>
 
@@ -159,13 +219,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { useSettings } from '../../composables/useSettings.js'
 import { useUtils } from '../../composables/useUtils.js'
 
 const { settings, activeOcr, ocrKeys, configPath } = useSettings()
-const { showToastOnce, openUrl } = useUtils()
+const { showToastOnce, showToast, openUrl } = useUtils()
 
 const ocrList = [
   { key: 'paddle_ocr', name: 'PaddleOCR', desc: '本地 PaddleOCR 模型识别，无需 API Key，激活即用' },
@@ -249,6 +310,127 @@ function toggleOcr(key) {
   }
   activeOcr.value = activeOcr.value === key ? null : key
 }
+
+// Model download state
+const modelStatus = ref(null)
+const allModelsExist = ref(true)
+const modelsDir = ref('')
+const downloading = ref(false)
+const downloadError = ref('')
+const downloadList = ref([])
+
+async function refreshModelStatus() {
+  try {
+    modelStatus.value = await invoke('check_ocr_models_state')
+    allModelsExist.value = Object.values(modelStatus.value).every(v => v)
+    modelsDir.value = await invoke('ocr_models_data_dir')
+  } catch (e) {
+    console.warn('refreshModelStatus failed:', e)
+  }
+}
+
+let unlistenList = []
+
+async function setupDownloadListeners() {
+  const unlisten1 = await listen('download-start', (event) => {
+    const f = event.payload
+    const existing = downloadList.value.find(d => d.fileName === f.fileName)
+    if (existing) {
+      existing.total = f.total
+      existing.downloaded = 0
+      existing.status = 'downloading'
+      existing.errorMsg = ''
+    } else {
+      downloadList.value.push({
+        fileName: f.fileName,
+        total: f.total,
+        downloaded: 0,
+        status: 'downloading',
+        errorMsg: '',
+      })
+    }
+  })
+
+  const unlisten2 = await listen('download-progress', (event) => {
+    const f = event.payload
+    const item = downloadList.value.find(d => d.fileName === f.fileName)
+    if (item) {
+      item.total = f.total
+      item.downloaded = f.downloaded
+    }
+  })
+
+  const unlisten3 = await listen('download-complete', (event) => {
+    const f = event.payload
+    const item = downloadList.value.find(d => d.fileName === f.fileName)
+    if (item) {
+      item.status = 'completed'
+      item.downloaded = item.total
+    }
+    refreshModelStatus()
+  })
+
+  const unlisten4 = await listen('download-error', (event) => {
+    const f = event.payload
+    const item = downloadList.value.find(d => d.fileName === f.fileName)
+    if (item) {
+      item.status = 'error'
+      item.errorMsg = f.status || '下载失败'
+    }
+    refreshModelStatus()
+  })
+
+  unlistenList = [unlisten1, unlisten2, unlisten3, unlisten4]
+}
+
+async function startDownload() {
+  downloading.value = true
+  downloadError.value = ''
+  downloadList.value = []
+
+  try {
+    await invoke('download_ocr_models', { useMirror: settings.useHuggingFaceMirror, useGithubMirror: settings.useGitHubMirror })
+    await refreshModelStatus()
+    showToastOnce('模型下载完成')
+  } catch (e) {
+    downloadError.value = typeof e === 'string' ? e : '下载失败'
+    await refreshModelStatus()
+    showToastOnce('部分模型下载失败，可点击重试')
+  } finally {
+    downloading.value = false
+  }
+}
+
+async function retryDownload(fileName) {
+  const item = downloadList.value.find(d => d.fileName === fileName)
+  if (item) {
+    item.status = 'downloading'
+    item.downloaded = 0
+    item.errorMsg = ''
+  }
+
+  try {
+    await invoke('retry_download_ocr_file', { fileName, useMirror: settings.useHuggingFaceMirror, useGithubMirror: settings.useGitHubMirror })
+    await refreshModelStatus()
+  } catch (e) {
+    const item2 = downloadList.value.find(d => d.fileName === fileName)
+    if (item2) {
+      item2.status = 'error'
+      item2.errorMsg = typeof e === 'string' ? e : '重试失败'
+    }
+  }
+}
+
+watch(selectedKey, async (newKey) => {
+  if (newKey === 'paddle_ocr') {
+    await refreshModelStatus()
+  }
+})
+
+onMounted(async () => {
+  await refreshModelStatus()
+  await setupDownloadListeners()
+})
 
 async function saveConfig() {
   const filled = v => v && v.trim()
@@ -452,5 +634,165 @@ async function saveConfig() {
 
 .detail-help p {
   margin: 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.model-status-section {
+  margin-top: 8px;
+}
+
+.model-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.model-file-name {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.model-status-ok {
+  color: #27ae60;
+  font-size: 12px;
+}
+
+.model-status-missing {
+  color: #e74c3c;
+  font-size: 12px;
+}
+
+.btn-download {
+  margin-top: 16px;
+  padding: 8px 28px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+
+.btn-download:hover {
+  opacity: 0.85;
+}
+
+.download-section {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.download-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.download-file-item {
+  margin-bottom: 12px;
+}
+
+.download-file-item:last-child {
+  margin-bottom: 0;
+}
+
+.download-file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.download-file-name {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.download-percent {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.download-status-completed {
+  font-size: 11px;
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.download-status-error {
+  font-size: 11px;
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.progress-bar-bg {
+  height: 6px;
+  background: var(--border-strong);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.2s;
+}
+
+.progress-bar-fill.indeterminate {
+  width: 30% !important;
+  animation: indeterminate-bar 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate-bar {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.download-retry-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-retry {
+  padding: 2px 10px;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+
+.btn-retry:hover {
+  opacity: 0.8;
+}
+
+.download-error-msg {
+  font-size: 11px;
+  color: #e74c3c;
 }
 </style>

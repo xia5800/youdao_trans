@@ -1,8 +1,8 @@
-pub mod baidu;
-pub mod tencent;
-pub mod xunfei;
-pub mod ollama;
-pub mod paddle;
+mod baidu;
+mod ollama;
+mod paddle;
+mod tencent;
+mod xunfei;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -107,4 +107,56 @@ pub async fn finish_ocr_screenshot(
     let _ = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_TRANSLATE);
     let _ = app.emit(constants::EVENT_CHECK_PENDING_OCR, "");
     Ok(())
+}
+
+#[tauri::command]
+pub fn check_ocr_models_state() -> std::collections::HashMap<String, bool> {
+    paddle::check_model_files()
+}
+
+#[tauri::command]
+pub fn ocr_models_data_dir() -> String {
+    // Find the first candidate dir with all 3 model files present
+    let dirs = paddle::candidate_dirs();
+    dirs.into_iter()
+        .find(|d| {
+            d.join("PP-OCRv6_medium_det.onnx").exists()
+                && d.join("PP-OCRv6_medium_rec.onnx").exists()
+                && d.join("ppocrv6_dict.txt").exists()
+        })
+        .unwrap_or_else(|| {
+            dirs::data_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join(crate::constants::APP_DATA_DIR)
+                .join("models")
+                .join("ocr")
+                .join("PaddleOCR")
+        })
+        .to_string_lossy()
+        .to_string()
+}
+
+#[tauri::command]
+pub async fn download_ocr_models(
+    app: tauri::AppHandle,
+    use_mirror: bool,
+    use_github_mirror: bool,
+) -> Result<(), String> {
+    let specs = paddle::download_specs();
+    crate::download::download_files(&app, &specs, use_mirror, use_github_mirror).await
+}
+
+#[tauri::command]
+pub async fn retry_download_ocr_file(
+    app: tauri::AppHandle,
+    file_name: String,
+    use_mirror: bool,
+    use_github_mirror: bool,
+) -> Result<(), String> {
+    let specs = paddle::download_specs();
+    let spec = specs
+        .into_iter()
+        .find(|s| s.file_name == file_name)
+        .ok_or_else(|| format!("未知文件: {}", file_name))?;
+    crate::download::retry_download_file(&app, spec, use_mirror, use_github_mirror).await
 }

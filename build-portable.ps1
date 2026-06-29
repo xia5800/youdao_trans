@@ -40,7 +40,7 @@ if (Test-Path -LiteralPath $OUTPUT_DIR) {
 }
 New-Item -ItemType Directory -Path $OUTPUT_DIR -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OUTPUT_DIR "models\dict") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $OUTPUT_DIR "models\ocr") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $OUTPUT_DIR "models\ocr\PaddleOCR") -Force | Out-Null
 
 # Copy files
 Copy-Item -LiteralPath $appExe -Destination (Join-Path $OUTPUT_DIR "app.exe") -Force
@@ -54,12 +54,13 @@ if (Test-Path -LiteralPath $dbFile) {
     Write-Warning "ecdict.db not found at $dbFile — skipping"
 }
 
-$ocrDir = Join-Path $PSScriptRoot "models\ocr"
+$ocrDir = Join-Path $PSScriptRoot "models\ocr\PaddleOCR"
 if (Test-Path -LiteralPath $ocrDir) {
-    Copy-Item -LiteralPath "$ocrDir\*" -Destination (Join-Path $OUTPUT_DIR "models\ocr") -Recurse -Force
+    $destDir = Join-Path $OUTPUT_DIR "models\ocr\PaddleOCR"
+    Copy-Item -LiteralPath "$ocrDir\*" -Destination $destDir -Recurse -Force
     Write-Host "  Copied OCR models" -ForegroundColor Green
 } else {
-    Write-Warning "models/ocr not found — skipping"
+    Write-Warning "models/ocr/PaddleOCR not found — skipping"
 }
 
 # Step 5: Show result

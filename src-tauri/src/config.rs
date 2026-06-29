@@ -38,6 +38,8 @@ pub struct Settings {
     pub ocr_keys: HashMap<String, String>,
     pub close_behavior: String,
     pub show_screenshot_crosshair: bool,
+    pub use_hugging_face_mirror: bool,
+    pub use_github_mirror: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -98,6 +100,8 @@ impl Default for Settings {
             ocr_keys: HashMap::new(),
             close_behavior: "ask".into(),
             show_screenshot_crosshair: true,
+            use_hugging_face_mirror: false,
+            use_github_mirror: false,
         }
     }
 }

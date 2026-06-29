@@ -4,6 +4,7 @@ use std::sync::{Mutex, OnceLock};
 use base64::Engine;
 use oar_ocr::prelude::*;
 use oar_ocr::domain::tasks::TextDetectionConfig;
+use crate::download::{DownloadSpec, check_files};
 
 const CARGO_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
@@ -11,36 +12,104 @@ struct OcrEngine {
     engine: OAROCR,
 }
 
-fn models_dir() -> PathBuf {
-    // 1) Portable mode: relative to the executable's directory
+const PADDLE_DIR: &str = "PaddleOCR";
+
+/// The data directory where downloaded PaddleOCR models are stored.
+fn models_data_dir() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(crate::constants::APP_DATA_DIR)
+        .join("models")
+        .join("ocr")
+        .join(PADDLE_DIR)
+}
+
+/// All directories that may contain PaddleOCR models, in priority order.
+pub fn candidate_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    // 1) Portable mode: relative to executable
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
-            let p = exe_dir.join("models").join("ocr");
-            if p.exists() {
-                return p;
-            }
+            dirs.push(exe_dir.join("models").join("ocr").join(PADDLE_DIR));
         }
     }
 
-    // 2) Development: relative to CARGO_MANIFEST_DIR (project/src-tauri)
-    let from_manifest = {
-        let mut p = PathBuf::from(CARGO_DIR);
-        p.pop();
-        p.join("models").join("ocr")
-    };
-    if from_manifest.exists() {
-        return from_manifest;
-    }
+    // 2) User data directory (downloaded models)
+    dirs.push(models_data_dir());
 
-    // 3) Fallback: current working directory
-    let cwd = std::env::current_dir()
-        .unwrap_or_default()
-        .join("models").join("ocr");
-    if cwd.exists() {
-        return cwd;
-    }
+    // 3) Development: relative to CARGO_MANIFEST_DIR
+    let mut from_manifest = PathBuf::from(CARGO_DIR);
+    from_manifest.pop();
+    from_manifest = from_manifest.join("models").join("ocr").join(PADDLE_DIR);
+    dirs.push(from_manifest);
 
-    from_manifest
+    // 4) Current working directory
+    dirs.push(
+        std::env::current_dir()
+            .unwrap_or_default()
+            .join("models")
+            .join("ocr")
+            .join(PADDLE_DIR),
+    );
+
+    dirs
+}
+
+fn models_dir() -> PathBuf {
+    candidate_dirs()
+        .into_iter()
+        .find(|d| {
+            d.exists()
+                && d.join("PP-OCRv6_medium_det.onnx").exists()
+                && d.join("PP-OCRv6_medium_rec.onnx").exists()
+                && d.join("ppocrv6_dict.txt").exists()
+        })
+        .unwrap_or_else(|| {
+            let mut p = PathBuf::from(CARGO_DIR);
+            p.pop();
+            p.join("models").join("ocr").join(PADDLE_DIR)
+        })
+}
+
+/// The three files PaddleOCR needs, as generic [`DownloadSpec`]s.
+pub fn download_specs() -> Vec<DownloadSpec> {
+    let dest = models_data_dir();
+    vec![
+        DownloadSpec {
+            file_name: "PP-OCRv6_medium_det.onnx".into(),
+            hf_repo: Some("PaddlePaddle/PP-OCRv6_medium_det_onnx".into()),
+            remote_file_name: Some("inference.onnx".into()),
+            direct_url: None,
+            dest_dir: dest.clone(),
+        },
+        DownloadSpec {
+            file_name: "PP-OCRv6_medium_rec.onnx".into(),
+            hf_repo: Some("PaddlePaddle/PP-OCRv6_medium_rec_onnx".into()),
+            remote_file_name: Some("inference.onnx".into()),
+            direct_url: None,
+            dest_dir: dest.clone(),
+        },
+        DownloadSpec {
+            file_name: "ppocrv6_dict.txt".into(),
+            hf_repo: None,
+            remote_file_name: None,
+            direct_url: Some(
+                "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/ppocr/utils/dict/ppocrv6_dict.txt"
+                    .into(),
+            ),
+            dest_dir: dest,
+        },
+    ]
+}
+
+/// Check which PaddleOCR model files exist in any candidate directory.
+pub fn check_model_files() -> std::collections::HashMap<String, bool> {
+    let dirs = candidate_dirs();
+    let specs = download_specs();
+    check_files(&specs, &dirs)
+        .into_iter()
+        .collect()
 }
 
 static ENGINE: OnceLock<Mutex<Option<OcrEngine>>> = OnceLock::new();

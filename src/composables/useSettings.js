@@ -24,6 +24,8 @@ const FALLBACK = {
   ocrKeys: {},
   closeBehavior: 'ask',
   showScreenshotCrosshair: true,
+  useHuggingFaceMirror: false,
+  useGitHubMirror: false,
 }
 
 const state = reactive({ ...FALLBACK })

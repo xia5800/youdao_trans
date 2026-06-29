@@ -43,7 +43,7 @@ if (-not (Test-Path -LiteralPath $dbFile)) {
 $dbSize = [math]::Round((Get-Item $dbFile).Length / 1MB, 2)
 Write-Host "  ecdict.db: $dbSize MB" -ForegroundColor Green
 
-$ocrDir = Join-Path $PSScriptRoot "models\ocr"
+$ocrDir = Join-Path $PSScriptRoot "models\ocr\PaddleOCR"
 $ocrFiles = @("PP-OCRv6_medium_det.onnx", "PP-OCRv6_medium_rec.onnx", "ppocrv6_dict.txt")
 foreach ($file in $ocrFiles) {
     $ocrFile = Join-Path $ocrDir $file

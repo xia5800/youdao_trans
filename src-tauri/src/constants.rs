@@ -13,6 +13,10 @@ pub const EVENT_DISMISS_CLOSE_DIALOG: &str = "dismiss-close-dialog";
 pub const EVENT_CAPTURE_SCREEN: &str = "capture-screen";
 pub const EVENT_SCREENSHOT_READY: &str = "screenshot-ready";
 
+pub const EVENT_DOWNLOAD_START: &str = "download-start";
+pub const EVENT_DOWNLOAD_PROGRESS: &str = "download-progress";
+pub const EVENT_DOWNLOAD_COMPLETE: &str = "download-complete";
+pub const EVENT_DOWNLOAD_ERROR: &str = "download-error";
 pub const ROUTE_TRANSLATE: &str = "/translate";
 pub const ROUTE_DICTIONARY: &str = "/dictionary";
 pub const ROUTE_SETTINGS: &str = "/settings";
