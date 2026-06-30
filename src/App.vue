@@ -100,9 +100,6 @@ useHotkeyListener((hk) => {
     invoke('start_screenshot').catch(e => showToast(`截图启动失败: ${e}`))
     return
   }
-  if (hk.id === 'ocr') {
-    return
-  }
   showToast(`快捷键 ${hk.combo} 已触发：${hk.label} (功能待实现)`)
 })
 </script>

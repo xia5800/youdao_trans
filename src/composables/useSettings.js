@@ -12,7 +12,7 @@ const FALLBACK = {
   replaceNewlines: false,
   autoTranslate: false,
   autoTranslateDelay: 1200,
-  hotkeys: { translate: 'Ctrl+Enter', screenshot: 'Alt+W', ocr: 'Alt+E', selectionTranslate: 'Alt+T' },
+  hotkeys: { translate: 'Ctrl+Enter', screenshot: 'Alt+W', selectionTranslate: 'Alt+T' },
   activeTranslator: 'microsoft_free',
   translatorKeys: {},
   activeOcr: 'ollama_ocr',

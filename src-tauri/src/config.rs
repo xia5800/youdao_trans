@@ -44,8 +44,6 @@ pub struct Hotkeys {
     pub translate: String,
     #[serde(default = "default_hotkey_screenshot")]
     pub screenshot: String,
-    #[serde(default = "default_hotkey_ocr")]
-    pub ocr: String,
     #[serde(default = "default_hotkey_selection_translate")]
     pub selection_translate: String,
 }
@@ -56,9 +54,6 @@ fn default_hotkey_translate() -> String {
 fn default_hotkey_screenshot() -> String {
     "Alt+W".into()
 }
-fn default_hotkey_ocr() -> String {
-    "Alt+E".into()
-}
 fn default_hotkey_selection_translate() -> String {
     "Alt+T".into()
 }
@@ -68,7 +63,6 @@ impl Default for Hotkeys {
         Self {
             translate: default_hotkey_translate(),
             screenshot: default_hotkey_screenshot(),
-            ocr: default_hotkey_ocr(),
             selection_translate: default_hotkey_selection_translate(),
         }
     }

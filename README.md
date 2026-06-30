@@ -13,7 +13,7 @@
 - **翻译记录** — 历史记录自动保存，支持收藏、搜索、筛选、批量管理
 - **系统托盘** — 后台常驻，托盘菜单快速访问各项功能
 - **全局快捷键** — 自定义快捷键，全局可用
-- **TTS 朗读** — 浏览器原生语音合成，支持多语种
+- **TTS 朗读** — 浏览器原生语音合成 + Edge TTS 云语音，支持多语种、多音色
 - **深色模式** — 跟随系统 / 浅色 / 深色
 
 ## 截图
@@ -35,6 +35,7 @@
 | 打开翻译窗口 | 双击托盘图标，或托盘菜单 → 输入翻译       |
 | 截图翻译     | 默认快捷键 `Alt+W`，或托盘菜单 → 截图翻译 |
 | 划词翻译     | 选中文字后按 `Alt+T`（默认）              |
+| 手动翻译     | 默认快捷键 `Ctrl+Enter`                   |
 | 查单词       | 托盘菜单 → 查单词                         |
 | 全局快捷键   | 设置 → 全局快捷键设置                     |
 
@@ -178,12 +179,17 @@ ollama pull maternion/Qianfan-OCR
 
 ## 配置说明
 
-配置文件路径：`C:\Users\<用户名>\AppData\Roaming\youdao-fanyi\config\`
+配置文件位于程序根目录下的 `config/` 文件夹：
 
-- **调试模式**：明文 JSON (`config-dev.json`)
-- **发布模式**：AES-256-GCM 加密 (`config.enc`)，密钥由机器 UID + 盐值派生
+- **调试模式**：`<项目根>/config/config-dev.json`（明文 JSON）
+- **发布模式**：`<exe所在目录>/config/config.enc`（AES-256-GCM 加密，密钥由机器 UID + 盐值派生）
 
-历史数据库路径：`C:\Users\<用户名>\AppData\Roaming\youdao-fanyi\db\history.db`（调试模式为 `history-dev.db`）
+历史数据库位于程序根目录下的 `db/` 文件夹：
+
+- **调试模式**：`<项目根>/db/history-dev.db`
+- **发布模式**：`<exe所在目录>/db/history.db`
+
+OCR 模型文件位于程序根目录下的 `models/` 文件夹。
 
 ## 开发
 
@@ -227,7 +233,7 @@ npm run tauri build  # 使用 Tauri 内置 NSIS 构建安装包
 - **后端**：Rust + Tauri 2.x
 - **数据库**：SQLite (字典 + 历史记录)
 - **OCR**：PaddleOCR（本地离线） / 百度云 / 腾讯云 / 讯飞 / Ollama
-- **翻译**：微软 / 百度 / 阿里 / 有道 / 谷歌 API
+- **翻译**：微软免费 / 微软Azure / 谷歌 / 百度 / 阿里 / 有道 / OpenAI / Ollama / DeepLX
 
 ## 其它
 
