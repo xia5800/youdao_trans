@@ -69,6 +69,7 @@ pub fn run() {
             app.manage(selection::SelectionState(std::sync::Mutex::new(None)));
             app.manage(ocr::PendingOcrState(std::sync::Mutex::new(None)));
             app.manage(tray::ShortcutsEnabled(std::sync::Mutex::new(true)));
+            app.manage(dict::DictDownloadState::new());
 
             let window = app.get_webview_window("main").unwrap();
 
@@ -162,6 +163,11 @@ pub fn run() {
             translate::translate_command,
             dict::dict_suggestions,
             dict::dict_lookup,
+            dict::check_dict_db,
+            dict::download_dict_db,
+            dict::pause_dict_download,
+            dict::resume_dict_download,
+            dict::cancel_dict_download,
             history::save_history,
             history::load_history,
             history::delete_history,

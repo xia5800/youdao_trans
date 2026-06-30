@@ -1,5 +1,69 @@
 <template>
   <div class="dictionary-container">
+    <div v-if="!dbReady" class="db-missing-overlay">
+      <div class="db-missing-card">
+        <svg class="db-missing-icon" viewBox="0 0 80 80" fill="none">
+          <use href="/icons.svg#icon-db-missing"></use>
+        </svg>
+        <div class="db-missing-title">字典数据库未找到</div>
+        <div class="db-missing-desc">首次使用需要下载离线字典数据库（约 207MB），下载后即可离线查词。</div>
+
+        <div class="mirror-toggle">
+          <div class="switch" :class="{ active: useGitHubMirror }" @click="useGitHubMirror = !useGitHubMirror">
+            <div class="switch-knob"></div>
+          </div>
+          <span class="toggle-label">使用 GitHub 加速（gh-proxy.com）下载</span>
+        </div>
+
+        <template v-if="downloading">
+          <div class="download-section">
+            <div class="download-title">正在下载字典数据库...</div>
+            <div class="download-file-item">
+              <div class="download-file-header">
+                <span class="download-file-name" :title="downloadUrl">{{ downloadStatus.fileName }}</span>
+                <span v-if="downloadStatus.total > 0" class="download-percent">{{ Math.round(downloadStatus.downloaded / downloadStatus.total * 100) }}%</span>
+                <span v-else class="download-percent">下载中...</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" :class="{ indeterminate: downloadStatus.total === 0 }" :style="downloadStatus.total > 0 ? { width: Math.round(downloadStatus.downloaded / downloadStatus.total * 100) + '%' } : {}"></div>
+              </div>
+              <div class="download-speed-row">
+                <span class="download-speed">{{ downloadSpeed }}</span>
+                <div class="download-actions">
+                  <button v-if="!paused" class="btn-icon" title="暂停" @click="pauseDownload">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                      <rect x="6" y="4" width="4" height="16" rx="1"/>
+                      <rect x="14" y="4" width="4" height="16" rx="1"/>
+                    </svg>
+                  </button>
+                  <button v-else class="btn-icon" title="继续" @click="resumeDownload">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+                  <button class="btn-icon btn-icon-danger" title="取消" @click="cancelDownload">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="downloadStatus.status === 'error'" class="download-error-row">
+          <span class="download-error-msg">{{ downloadStatus.errorMsg }}</span>
+          <button class="btn-retry" @click="startDownload">重试</button>
+        </div>
+
+        <template v-if="!downloading && downloadStatus.status !== 'error'">
+          <button class="btn-download" @click="startDownload">下载字典数据库</button>
+        </template>
+      </div>
+    </div>
+
+    <template v-else>
     <div class="search-bar">
       <div class="search-input-wrapper">
          <input type="text" class="search-input" v-model="searchWord" placeholder="搜索单词..."
@@ -99,12 +163,14 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { useTts } from '../composables/useTts.js'
 
 const searchWord = ref('')
@@ -114,6 +180,20 @@ const result = ref(null)
 const loading = ref(false)
 const notFound = ref(false)
 const errorMsg = ref('')
+const dbReady = ref(false)
+const useGitHubMirror = ref(localStorage.getItem('dictUseGitHubMirror') === 'true')
+const downloading = ref(false)
+const paused = ref(false)
+const downloadSpeed = ref('')
+const downloadStatus = reactive({ fileName: 'ecdict-sqlite-28.zip', total: 0, downloaded: 0, status: 'idle', errorMsg: '' })
+let unlistenDownload = null
+let speedTimer = null
+let lastBytes = 0
+let lastTime = 0
+
+const DOWNLOAD_URL = 'https://github.com/skywind3000/ECDICT/releases/download/1.0.28/ecdict-sqlite-28.zip'
+const MIRROR_PREFIX = 'https://gh-proxy.com'
+const downloadUrl = computed(() => useGitHubMirror.value ? `${MIRROR_PREFIX}/${DOWNLOAD_URL}` : DOWNLOAD_URL)
 
 const hasDetail = computed(() => {
   const d = result.value?.detail
@@ -122,10 +202,132 @@ const hasDetail = computed(() => {
 
 let debounceTimer = null
 
-onMounted(() => {
-  searchWord.value = 'abandon'
-  doSearch()
+async function checkDb() {
+  dbReady.value = await invoke('check_dict_db')
+  if (dbReady.value) {
+    searchWord.value = 'abandon'
+    doSearch()
+  }
+}
+
+onMounted(async () => {
+  await checkDb()
+  unlistenDownload = await listen('download-progress', (e) => {
+    const p = e.payload
+    downloadStatus.fileName = p.file_name
+    downloadStatus.total = p.total
+    downloadStatus.downloaded = p.downloaded
+    downloadStatus.status = p.status
+  })
+  await listen('download-complete', async () => {
+    downloadStatus.status = 'completed'
+    downloading.value = false
+    paused.value = false
+    clearSpeedTimer()
+    const found = await invoke('check_dict_db')
+    if (found) {
+      dbReady.value = true
+      searchWord.value = 'abandon'
+      doSearch()
+    } else {
+      downloadStatus.status = 'error'
+      downloadStatus.errorMsg = '下载完成但未找到字典文件，请重试'
+    }
+  })
+  await listen('download-error', (e) => {
+    const p = e.payload
+    downloadStatus.status = 'error'
+    downloadStatus.errorMsg = p.status === 'cancelled' ? '下载已取消' : (p.status || '下载失败')
+    downloading.value = false
+    paused.value = false
+    clearSpeedTimer()
+  })
 })
+
+onUnmounted(() => {
+  if (unlistenDownload) unlistenDownload()
+  clearSpeedTimer()
+})
+
+function clearSpeedTimer() {
+  if (speedTimer) { clearInterval(speedTimer); speedTimer = null }
+  downloadSpeed.value = ''
+  lastBytes = 0
+  lastTime = 0
+}
+
+function startSpeedTimer() {
+  lastBytes = downloadStatus.downloaded
+  lastTime = Date.now()
+  clearSpeedTimer()
+  speedTimer = setInterval(() => {
+    if (downloadStatus.status === 'downloading' && !paused.value) {
+      const now = Date.now()
+      const currentBytes = downloadStatus.downloaded
+      const elapsed = (now - lastTime) / 1000
+      if (elapsed > 0) {
+        const bytesPerSec = (currentBytes - lastBytes) / elapsed
+        downloadSpeed.value = formatSpeed(bytesPerSec)
+      }
+      lastBytes = currentBytes
+      lastTime = now
+    }
+  }, 1000)
+}
+
+function formatSpeed(bytesPerSec) {
+  if (bytesPerSec <= 0) return ''
+  if (bytesPerSec >= 1024 * 1024) {
+    return (bytesPerSec / (1024 * 1024)).toFixed(1) + ' MB/s'
+  }
+  if (bytesPerSec >= 1024) {
+    return Math.round(bytesPerSec / 1024) + ' KB/s'
+  }
+  return Math.round(bytesPerSec) + ' B/s'
+}
+
+async function startDownload() {
+  localStorage.setItem('dictUseGitHubMirror', useGitHubMirror.value)
+  downloading.value = true
+  paused.value = false
+  downloadStatus.status = 'downloading'
+  downloadStatus.total = 0
+  downloadStatus.downloaded = 0
+  downloadStatus.errorMsg = ''
+  startSpeedTimer()
+  try {
+    await invoke('download_dict_db', { useGithubMirror: useGitHubMirror.value })
+  } catch (e) {
+    downloadStatus.status = 'error'
+    downloadStatus.errorMsg = String(e)
+    downloading.value = false
+    clearSpeedTimer()
+  }
+}
+
+async function pauseDownload() {
+  paused.value = true
+  downloadSpeed.value = ''
+  await invoke('pause_dict_download')
+}
+
+async function resumeDownload() {
+  paused.value = false
+  lastBytes = downloadStatus.downloaded
+  lastTime = Date.now()
+  await invoke('resume_dict_download')
+}
+
+async function cancelDownload() {
+  paused.value = false
+  downloadStatus.status = 'idle'
+  downloadStatus.total = 0
+  downloadStatus.downloaded = 0
+  downloadStatus.errorMsg = ''
+  downloading.value = false
+  clearSpeedTimer()
+  await invoke('cancel_dict_download')
+}
 
 async function onInput() {
   clearTimeout(debounceTimer)
@@ -540,6 +742,240 @@ function pronounce() {
   color: var(--text-secondary);
   font-family: monospace;
   line-height: 1.4;
+}
+
+.db-missing-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  z-index: 10;
+}
+
+.db-missing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.db-missing-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.db-missing-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.db-missing-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.mirror-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mirror-toggle .switch {
+  width: 40px;
+  height: 22px;
+  background-color: var(--bg-switch-off);
+  border-radius: 22px;
+  position: relative;
+  cursor: default;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+
+.mirror-toggle .switch.active {
+  background-color: var(--accent);
+}
+
+.mirror-toggle .switch-knob {
+  width: 18px;
+  height: 18px;
+  background-color: var(--text-inverse);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mirror-toggle .switch.active .switch-knob {
+  left: 20px;
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.btn-download {
+  padding: 10px 28px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: default;
+  transition: 0.2s;
+}
+
+.btn-download:hover {
+  background: var(--accent-hover);
+}
+
+.download-section {
+  width: 100%;
+}
+
+.download-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.download-file-item {
+  margin-bottom: 8px;
+}
+
+.download-file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.download-file-name {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.download-percent {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.download-status-completed {
+  font-size: 12px;
+  color: #27ae60;
+}
+
+.download-status-error {
+  font-size: 12px;
+  color: #e74c3c;
+}
+
+.download-error-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.download-error-msg {
+  font-size: 11px;
+  color: #e74c3c;
+  flex: 1;
+}
+
+.btn-retry {
+  padding: 4px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: default;
+  color: var(--text-secondary);
+  transition: 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-retry:hover {
+  background: var(--border-strong);
+}
+
+.download-speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.download-speed {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.download-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon-danger:hover {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-fill.indeterminate {
+  width: 30%;
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 
 @media (max-width: 1000px) {

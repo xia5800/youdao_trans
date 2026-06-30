@@ -35,16 +35,6 @@ if (-not (Test-Path -LiteralPath $appExe)) {
 }
 Write-Host "  app.exe: $([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB" -ForegroundColor Green
 
-$dbFile = Join-Path $PSScriptRoot "models\dict\ecdict.db"
-if (-not (Test-Path -LiteralPath $dbFile)) {
-    Write-Error "ecdict.db not found at $dbFile"
-    exit 1
-}
-$dbSize = [math]::Round((Get-Item $dbFile).Length / 1MB, 2)
-Write-Host "  ecdict.db: $dbSize MB" -ForegroundColor Green
-
-Write-Host "  OCR models: 在线下载，不打包" -ForegroundColor Yellow
-
 # Step 5: Create output directory
 $outDir = Join-Path $PSScriptRoot "dist-installer"
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null

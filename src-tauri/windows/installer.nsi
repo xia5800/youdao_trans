@@ -77,10 +77,6 @@ Section "MainProgram" SEC01
   SetOverwrite ifnewer
   File "..\target\release\app.exe"
 
-  ; Dictionary database
-  SetOutPath "$INSTDIR\models\dict"
-  File "..\..\models\dict\ecdict.db"
-
   ; OCR models are downloaded on demand ― not bundled
 
   ; Create start menu shortcuts
@@ -111,9 +107,8 @@ Section Uninstall
 
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\app.exe"
-  Delete "$INSTDIR\models\dict\ecdict.db"
-  RMDir "$INSTDIR\models\dict"
-  RMDir "$INSTDIR\models\ocr"
+  RMDir "$INSTDIR\db"
+  RMDir "$INSTDIR\config"
   RMDir "$INSTDIR\models"
 
   Delete "$SMPROGRAMS\$StartMenuFolder\优道翻译.lnk"

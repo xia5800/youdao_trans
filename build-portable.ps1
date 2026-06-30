@@ -39,29 +39,8 @@ if (Test-Path -LiteralPath $OUTPUT_DIR) {
     Remove-Item -LiteralPath $OUTPUT_DIR -Recurse -Force
 }
 New-Item -ItemType Directory -Path $OUTPUT_DIR -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $OUTPUT_DIR "models\dict") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $OUTPUT_DIR "models\ocr\PaddleOCR") -Force | Out-Null
-
 # Copy files
 Copy-Item -LiteralPath $appExe -Destination (Join-Path $OUTPUT_DIR "app.exe") -Force
-
-$dbFile = Join-Path $PSScriptRoot "models\dict\ecdict.db"
-if (Test-Path -LiteralPath $dbFile) {
-    Copy-Item -LiteralPath $dbFile -Destination (Join-Path $OUTPUT_DIR "models\dict\ecdict.db") -Force
-    $dbSize = [math]::Round((Get-Item $dbFile).Length / 1MB, 2)
-    Write-Host "  Copied ecdict.db ($dbSize MB)" -ForegroundColor Green
-} else {
-    Write-Warning "ecdict.db not found at $dbFile — skipping"
-}
-
-$ocrDir = Join-Path $PSScriptRoot "models\ocr\PaddleOCR"
-if (Test-Path -LiteralPath $ocrDir) {
-    $destDir = Join-Path $OUTPUT_DIR "models\ocr\PaddleOCR"
-    Copy-Item -LiteralPath "$ocrDir\*" -Destination $destDir -Recurse -Force
-    Write-Host "  Copied OCR models" -ForegroundColor Green
-} else {
-    Write-Warning "models/ocr/PaddleOCR not found — skipping"
-}
 
 # Step 5: Show result
 $totalSize = [math]::Round((Get-ChildItem -LiteralPath $OUTPUT_DIR -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 2)

@@ -2,9 +2,39 @@ use crate::constants;
 use rusqlite::Connection;
 use serde::Serialize;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use tauri::Emitter;
+use tokio::sync::{Mutex, Notify};
+
+const DICT_ZIP_URL: &str = "https://github.com/skywind3000/ECDICT/releases/download/1.0.28/ecdict-sqlite-28.zip";
+const DICT_ZIP_FILE: &str = "ecdict-sqlite-28.zip";
+const DICT_MODEL_DIR: &str = "dict";
+const DICT_GITHUB_MIRROR: &str = "https://gh-proxy.com";
+
+pub struct DictDownloadState {
+    pub cancel_flag: AtomicBool,
+    pub paused_flag: AtomicBool,
+    pub notify: Notify,
+    pub temp_dir: Mutex<Option<PathBuf>>,
+    pub downloaded: AtomicU64,
+    pub total: AtomicU64,
+}
+
+impl DictDownloadState {
+    pub fn new() -> Self {
+        Self {
+            cancel_flag: AtomicBool::new(false),
+            paused_flag: AtomicBool::new(false),
+            notify: Notify::new(),
+            temp_dir: Mutex::new(None),
+            downloaded: AtomicU64::new(0),
+            total: AtomicU64::new(0),
+        }
+    }
+}
 
 fn db_path() -> PathBuf {
-    crate::config::default_models_dir_inner().join("dict/ecdict.db")
+    crate::config::default_models_dir_inner().join(format!("{}/stardict.db", DICT_MODEL_DIR))
 }
 
 #[derive(Serialize)]
@@ -260,4 +290,237 @@ pub fn dict_suggestions(prefix: String, limit: Option<u32>) -> Result<Vec<String
 #[tauri::command]
 pub fn dict_lookup(word: String) -> Result<Option<serde_json::Value>, String> {
     lookup_formatted(&word)
+}
+
+#[tauri::command]
+pub fn check_dict_db() -> bool {
+    db_path().exists()
+}
+
+async fn download_loop(
+    app: &tauri::AppHandle,
+    state: &DictDownloadState,
+    url: &str,
+    zip_path: &PathBuf,
+    dict_dir: &PathBuf,
+) -> Result<(), String> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+
+    let (response, offset) = loop {
+        if state.cancel_flag.load(Ordering::SeqCst) {
+            return Err("下载已取消".into());
+        }
+
+        while state.paused_flag.load(Ordering::SeqCst) {
+            state.notify.notified().await;
+            if state.cancel_flag.load(Ordering::SeqCst) {
+                return Err("下载已取消".into());
+            }
+        }
+
+        let offset = state.downloaded.load(Ordering::SeqCst);
+
+        let mut req = client.get(url);
+        if offset > 0 {
+            req = req.header("Range", format!("bytes={}-", offset));
+        }
+
+        let response = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            req.send(),
+        )
+        .await
+        .map_err(|_| "下载请求超时")?
+        .map_err(|e| format!("下载请求失败: {}", e))?;
+
+        if offset > 0 {
+            if response.status() != reqwest::StatusCode::PARTIAL_CONTENT {
+                state.downloaded.store(0, Ordering::SeqCst);
+                let _ = tokio::fs::remove_file(zip_path).await;
+                continue;
+            }
+        } else if !response.status().is_success() {
+            return Err(format!("下载失败: HTTP {}", response.status()));
+        }
+
+        break (response, offset);
+    };
+
+    let total = state.total.load(Ordering::SeqCst);
+    if total == 0 {
+        if let Some(cl) = response.content_length() {
+            state.total.store(cl, Ordering::SeqCst);
+        }
+    }
+
+    let mut file = if offset > 0 {
+        tokio::fs::OpenOptions::new()
+            .append(true)
+            .open(zip_path)
+            .await
+            .map_err(|e| format!("打开文件失败: {}", e))?
+    } else {
+        tokio::fs::File::create(zip_path)
+            .await
+            .map_err(|e| format!("创建文件失败: {}", e))?
+    };
+
+    use futures::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let mut stream = response.bytes_stream();
+    let mut downloaded = offset;
+
+    while let Some(chunk) = stream.next().await {
+        if state.cancel_flag.load(Ordering::SeqCst) {
+            return Err("下载已取消".into());
+        }
+
+        while state.paused_flag.load(Ordering::SeqCst) {
+            state.notify.notified().await;
+            if state.cancel_flag.load(Ordering::SeqCst) {
+                return Err("下载已取消".into());
+            }
+        }
+
+        let data = chunk.map_err(|e| format!("下载中断: {}", e))?;
+        file.write_all(&data).await.map_err(|e| format!("写入文件失败: {}", e))?;
+        downloaded += data.len() as u64;
+        state.downloaded.store(downloaded, Ordering::SeqCst);
+
+        let total_val = state.total.load(Ordering::SeqCst);
+        app.emit(constants::EVENT_DOWNLOAD_PROGRESS, crate::download::DownloadProgressPayload {
+            file_name: DICT_ZIP_FILE.to_string(),
+            total: total_val,
+            downloaded,
+            status: "downloading".into(),
+        }).ok();
+    }
+
+    file.flush().await.map_err(|e| format!("刷新文件失败: {}", e))?;
+    drop(file);
+
+    let zip_path2 = zip_path.clone();
+    let dict_dir2 = dict_dir.clone();
+
+    tokio::task::spawn_blocking(move || {
+        let zip_file = std::fs::File::open(&zip_path2)
+            .map_err(|e| format!("打开zip文件失败: {}", e))?;
+        let mut archive = zip::ZipArchive::new(zip_file)
+            .map_err(|e| format!("读取zip文件失败: {}", e))?;
+
+        std::fs::create_dir_all(&dict_dir2)
+            .map_err(|e| format!("创建目标目录失败: {}", e))?;
+
+        for i in 0..archive.len() {
+            let mut entry = archive.by_index(i)
+                .map_err(|e| format!("读取zip条目失败: {}", e))?;
+            let out_path = dict_dir2.join(entry.name());
+
+            if entry.is_dir() {
+                std::fs::create_dir_all(&out_path)
+                    .map_err(|e| format!("创建目录失败: {}", e))?;
+                continue;
+            }
+
+            if let Some(parent) = out_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("创建目录失败: {}", e))?;
+            }
+
+            let mut outfile = std::fs::File::create(&out_path)
+                .map_err(|e| format!("创建文件失败: {}", e))?;
+            std::io::copy(&mut entry, &mut outfile)
+                .map_err(|e| format!("解压文件失败: {}", e))?;
+        }
+
+        std::fs::remove_file(&zip_path2)
+            .map_err(|e| format!("删除zip文件失败: {}", e))?;
+
+        Ok::<_, String>(())
+    })
+    .await
+    .map_err(|e| format!("解压任务异常: {}", e))?
+    .map_err(|e| e)?;
+
+    if let Some(dir) = state.temp_dir.lock().await.as_ref() {
+        let _ = tokio::fs::remove_dir(dir).await;
+    }
+
+    app.emit(constants::EVENT_DOWNLOAD_COMPLETE, crate::download::DownloadProgressPayload {
+        file_name: DICT_ZIP_FILE.to_string(),
+        total: 1,
+        downloaded: 1,
+        status: "completed".into(),
+    }).ok();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn download_dict_db(app: tauri::AppHandle, use_github_mirror: bool, state: tauri::State<'_, DictDownloadState>) -> Result<(), String> {
+    state.cancel_flag.store(false, Ordering::SeqCst);
+    state.paused_flag.store(false, Ordering::SeqCst);
+
+    let url = if use_github_mirror {
+        format!("{}/{}", DICT_GITHUB_MIRROR, DICT_ZIP_URL)
+    } else {
+        DICT_ZIP_URL.to_string()
+    };
+
+    let temp_dir = std::env::temp_dir().join("youdao-fanyi-dict");
+    tokio::fs::create_dir_all(&temp_dir).await
+        .map_err(|e| format!("创建临时目录失败: {}", e))?;
+
+    *state.temp_dir.lock().await = Some(temp_dir.clone());
+
+    let zip_path = temp_dir.join(DICT_ZIP_FILE);
+    let dict_dir = crate::config::default_models_dir_inner().join(DICT_MODEL_DIR);
+
+    // Check for partial file to resume
+    if zip_path.exists() {
+        if let Ok(meta) = tokio::fs::metadata(&zip_path).await {
+            state.downloaded.store(meta.len(), Ordering::SeqCst);
+        }
+    }
+
+    let result = download_loop(&app, &state, &url, &zip_path, &dict_dir).await;
+
+    if let Err(ref e) = result {
+        if e == "下载已取消" {
+            let _ = tokio::fs::remove_file(&zip_path).await;
+            let _ = tokio::fs::remove_dir(&temp_dir).await;
+            Ok(())
+        } else {
+            app.emit(constants::EVENT_DOWNLOAD_ERROR, crate::download::DownloadProgressPayload {
+                file_name: DICT_ZIP_FILE.to_string(),
+                total: state.total.load(Ordering::SeqCst),
+                downloaded: state.downloaded.load(Ordering::SeqCst),
+                status: e.clone(),
+            }).ok();
+            result
+        }
+    } else {
+        result
+    }
+}
+
+#[tauri::command]
+pub fn pause_dict_download(state: tauri::State<'_, DictDownloadState>) {
+    state.paused_flag.store(true, Ordering::SeqCst);
+}
+
+#[tauri::command]
+pub fn resume_dict_download(state: tauri::State<'_, DictDownloadState>) {
+    state.paused_flag.store(false, Ordering::SeqCst);
+    state.notify.notify_one();
+}
+
+#[tauri::command]
+pub fn cancel_dict_download(state: tauri::State<'_, DictDownloadState>) {
+    state.cancel_flag.store(true, Ordering::SeqCst);
+    state.notify.notify_one();
 }

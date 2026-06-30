@@ -56,6 +56,7 @@ pub fn check_files(
 }
 
 #[derive(Clone, serde::Serialize)]
+#[allow(unused)]
 pub struct DownloadProgressPayload {
     pub file_name: String,
     pub total: u64,
