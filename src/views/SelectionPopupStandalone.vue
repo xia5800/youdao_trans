@@ -56,6 +56,7 @@ import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { useTts } from '../composables/useTts.js'
 
 const appWindow = getCurrentWebviewWindow()
 
@@ -66,6 +67,7 @@ const activeTranslator = ref(null)
 const translatorKeys = ref({})
 const isTranslating = ref(true)
 
+const { speak, stop } = useTts()
 let unlistenUpdate = null
 
 onMounted(async () => {
@@ -111,6 +113,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (unlistenUpdate) unlistenUpdate()
+  stop()
 })
 
 async function closeWindow() {
@@ -143,9 +146,7 @@ function copyResult() {
 
 function speakResult() {
   if (!translatedText.value) return
-  const utterance = new SpeechSynthesisUtterance(translatedText.value)
-  utterance.lang = currentTargetLang.value === 'zh' ? 'zh-CN' : currentTargetLang.value
-  speechSynthesis.speak(utterance)
+  speak(translatedText.value, currentTargetLang.value)
 }
 
 async function retranslate() {

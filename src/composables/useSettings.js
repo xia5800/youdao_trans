@@ -21,6 +21,8 @@ const FALLBACK = {
   ocrKeys: {},
   closeBehavior: 'ask',
   showScreenshotCrosshair: true,
+  ttsEngine: 'browser',
+  ttsVoice: 'zh-CN-XiaoxiaoNeural',
 }
 
 const state = reactive({ ...FALLBACK })

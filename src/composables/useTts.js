@@ -1,4 +1,5 @@
 import { useSettings } from './useSettings'
+import { invoke } from '@tauri-apps/api/core'
 
 const LANG_MAP = {
   zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', ko: 'ko-KR',
@@ -10,10 +11,85 @@ function mapLang(lang) {
 }
 
 export function useTts() {
-  const { volume, speed } = useSettings()
+  const { volume, speed, ttsEngine, ttsVoice } = useSettings()
+
+  let audioCtx = null
+  let sourceNode = null
+  let isSpeaking = false
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume()
+    }
+    return audioCtx
+  }
+
+  async function speakEdge(text, callbacks) {
+    if (!text) return
+
+    try {
+      callbacks?.onStart?.()
+      isSpeaking = true
+
+      const mp3Bytes = await invoke('tts_speak', {
+        text,
+        voice: ttsVoice.value,
+        speed: speed.value ?? 1.0,
+      })
+
+      if (!mp3Bytes || mp3Bytes.length === 0) {
+        isSpeaking = false
+        callbacks?.onEnd?.()
+        callbacks?.onError?.('语音合成返回空音频')
+        return
+      }
+
+      if (!isSpeaking) {
+        callbacks?.onEnd?.()
+        return
+      }
+
+      const ctx = getAudioCtx()
+      const arrayBuf = new Uint8Array(mp3Bytes).buffer
+      let audioBuf
+      try {
+        audioBuf = await ctx.decodeAudioData(arrayBuf)
+      } catch (decodeErr) {
+        console.error('[useTts] decodeAudioData failed:', decodeErr)
+        isSpeaking = false
+        callbacks?.onEnd?.()
+        callbacks?.onError?.(`音频解码失败: ${decodeErr}`)
+        return
+      }
+
+      sourceNode = ctx.createBufferSource()
+      sourceNode.buffer = audioBuf
+      sourceNode.connect(ctx.destination)
+      sourceNode.onended = () => {
+        isSpeaking = false
+        sourceNode = null
+        callbacks?.onEnd?.()
+      }
+      sourceNode.start()
+    } catch (e) {
+      console.error('[useTts] speakEdge error:', e)
+      isSpeaking = false
+      callbacks?.onEnd?.()
+      callbacks?.onError?.(`语音合成失败: ${e}`)
+    }
+  }
 
   function speak(text, lang, callbacks) {
     if (!text) return
+
+    if (ttsEngine.value === 'local') {
+      speakEdge(text, callbacks)
+      return
+    }
+
     if (!window.speechSynthesis) {
       callbacks?.onError?.('浏览器不支持语音合成')
       return
@@ -53,6 +129,14 @@ export function useTts() {
   }
 
   function stop() {
+    if (ttsEngine.value === 'local') {
+      isSpeaking = false
+      if (sourceNode) {
+        try { sourceNode.stop() } catch (_) {}
+        sourceNode = null
+      }
+      return
+    }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel()
     }

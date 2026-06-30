@@ -35,6 +35,8 @@ pub struct Settings {
     pub ocr_keys: HashMap<String, String>,
     pub close_behavior: String,
     pub show_screenshot_crosshair: bool,
+    pub tts_engine: String,
+    pub tts_voice: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -93,6 +95,8 @@ impl Default for Settings {
             ocr_keys: HashMap::new(),
             close_behavior: "ask".into(),
             show_screenshot_crosshair: true,
+            tts_engine: "browser".into(),
+            tts_voice: "zh-CN-XiaoxiaoNeural".into(),
         }
     }
 }

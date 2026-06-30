@@ -10,12 +10,16 @@ mod ocr;
 mod selection;
 mod translate;
 mod tray;
+mod tts;
 mod window;
 
 use tauri::{Listener, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize rustls with ring provider (avoids conflict with aws-lc-rs)
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             window::show_main(app);
@@ -164,6 +168,8 @@ pub fn run() {
             history::delete_history_batch,
             history::delete_history_all,
             history::toggle_history_favorite,
+            tts::tts_speak,
+            tts::tts_list_voices,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
