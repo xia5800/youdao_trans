@@ -1,3 +1,4 @@
+mod autostart;
 mod capture;
 mod config;
 mod constants;
@@ -22,10 +23,6 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--autostart"]),
-        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, shortcut, event| {
@@ -130,6 +127,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             window::is_autostart_launched,
+            autostart::enable_autostart,
+            autostart::disable_autostart,
+            autostart::is_autostart_enabled,
             window::app_exit,
             window::set_window_bg,
             window::minimize_window,

@@ -1,7 +1,6 @@
 import { reactive, watch, toRefs } from 'vue'
 
 import { invoke } from '@tauri-apps/api/core'
-import { enable as enableAutostart, disable as disableAutostart } from '@tauri-apps/plugin-autostart'
 import { useTheme } from './useTheme.js'
 import { useToast } from './useToast.js'
 
@@ -86,9 +85,9 @@ watch(() => state.autoStart, async (val) => {
   if (!loaded) return
   try {
     if (val) {
-      await enableAutostart()
+      await invoke('enable_autostart')
     } else {
-      await disableAutostart()
+      await invoke('disable_autostart')
     }
   } catch (e) {
     console.warn('autostart toggle failed:', e)
@@ -128,9 +127,9 @@ async function load() {
   loaded = true
   try {
     if (state.autoStart) {
-      await enableAutostart()
+      await invoke('enable_autostart')
     } else {
-      await disableAutostart()
+      await invoke('disable_autostart')
     }
   } catch (e) {
     console.warn('autostart sync failed:', e)
