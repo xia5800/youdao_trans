@@ -48,7 +48,7 @@ pub struct PendingOcrState(pub std::sync::Mutex<Option<String>>);
 
 #[tauri::command]
 pub async fn ocr_command(base64_img: String, app: tauri::AppHandle) -> Result<String, String> {
-    let config_json = match crate::config::load_effective() {
+    let config_json: String = match crate::config::load() {
         Ok(j) => j,
         Err(_) => return Ok(String::new()),
     };
@@ -116,24 +116,16 @@ pub fn check_ocr_models_state() -> std::collections::HashMap<String, bool> {
 
 #[tauri::command]
 pub fn ocr_models_data_dir() -> String {
-    // Find the first candidate dir with all 3 model files present
     let dirs = paddle::candidate_dirs();
-    dirs.into_iter()
-        .find(|d| {
-            d.join("PP-OCRv6_medium_det.onnx").exists()
-                && d.join("PP-OCRv6_medium_rec.onnx").exists()
-                && d.join("ppocrv6_dict.txt").exists()
-        })
-        .unwrap_or_else(|| {
-            dirs::data_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join(crate::constants::APP_DATA_DIR)
-                .join("models")
-                .join("ocr")
-                .join("PaddleOCR")
-        })
-        .to_string_lossy()
-        .to_string()
+    let found = dirs.into_iter().find(|d| {
+        d.join(crate::constants::OCR_DET_MODEL).exists()
+            && d.join(crate::constants::OCR_REC_MODEL).exists()
+            && d.join(crate::constants::OCR_DICT_FILE).exists()
+    });
+    if let Some(d) = found {
+        return d.to_string_lossy().to_string();
+    }
+    crate::config::default_models_dir_inner().join("ocr").join(crate::constants::OCR_MODEL_DIR).to_string_lossy().to_string()
 }
 
 #[tauri::command]

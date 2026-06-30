@@ -7,8 +7,6 @@ import { useToast } from './useToast.js'
 
 const FALLBACK = {
   theme: 'system',
-  configPath: '',
-  dbPath: '',
   autoStart: false,
   delayTime: 600,
   volume: 100,
@@ -24,8 +22,6 @@ const FALLBACK = {
   ocrKeys: {},
   closeBehavior: 'ask',
   showScreenshotCrosshair: true,
-  useHuggingFaceMirror: false,
-  useGitHubMirror: false,
 }
 
 const state = reactive({ ...FALLBACK })
@@ -74,13 +70,8 @@ async function doSave() {
   }
 
   try {
-    const savePath = state.configPath || null
     const json = JSON.stringify(state)
-    await invoke('save_config', { json, path: savePath })
-    if (savePath) {
-      const pointer = JSON.stringify({ configPath: savePath })
-      await invoke('save_config', { json: pointer, path: null })
-    }
+    await invoke('save_config', { json })
     await invoke('reload_hotkeys')
   } catch (e) {
     console.warn('save_config failed:', e)
@@ -118,22 +109,10 @@ function migrateHotkeys(hotkeys) {
 
 async function load() {
   try {
-    const raw = await invoke('load_config', { path: null })
+    const raw = await invoke('load_config')
     const data = JSON.parse(raw)
     data.hotkeys = { ...FALLBACK.hotkeys, ...migrateHotkeys(data.hotkeys || {}) }
     Object.assign(state, data)
-    if (state.configPath) {
-      try {
-        const raw2 = await invoke('load_config', { path: state.configPath })
-        const data2 = JSON.parse(raw2)
-        data2.hotkeys = { ...FALLBACK.hotkeys, ...migrateHotkeys(data2.hotkeys || {}) }
-        Object.assign(state, data2)
-      } catch (e2) {
-        console.warn('custom config at', state.configPath, 'is broken, removing:', e2)
-        await invoke('remove_config', { path: state.configPath })
-        state.configPath = ''
-      }
-    }
   } catch (e) {
     console.warn('load_config error, using defaults:', e)
   }

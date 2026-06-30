@@ -32,3 +32,8 @@ dist-installer/
 ## 日志
 *.log
 npm-debug.log*
+
+## 运行时数据
+/config/
+/db/
+/models/voice/

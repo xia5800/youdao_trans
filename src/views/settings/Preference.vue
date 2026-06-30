@@ -81,28 +81,6 @@
       </div>
     </div>
 
-    <div class="setting-item">
-      <div>
-        <div class="setting-label">配置路径</div>
-        <div class="setting-desc">应用程序配置存储位置，修改后自动保存到新路径</div>
-      </div>
-      <div class="path-group">
-        <div class="path-display"><span>{{ configPath || defaultConfigDirPlaceholder }}</span></div>
-        <button class="btn-select" @click="selectPath">选择</button>
-      </div>
-    </div>
-
-    <div class="setting-item">
-      <div>
-        <div class="setting-label">翻译记录数据路径</div>
-        <div class="setting-desc">翻译历史记录数据库存储位置</div>
-      </div>
-      <div class="path-group">
-        <div class="path-display"><span>{{ dbPath || defaultDbDirPlaceholder }}</span></div>
-        <button class="btn-select" @click="selectDbPath">选择</button>
-      </div>
-    </div>
-
     <div class="subsection-title">关闭行为</div>
     <div class="setting-item">
       <div>
@@ -119,9 +97,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { open } from '@tauri-apps/plugin-dialog'
+import { computed, watch } from 'vue'
 import { useTheme } from '../../composables/useTheme.js'
 import { useSettings } from '../../composables/useSettings.js'
 import { useHotkey } from '../../composables/useHotkey.js'
@@ -132,8 +108,6 @@ const translateCombo = computed(() => hotkeys.value.find(h => h.id === 'translat
 
 const {
   settings,
-  configPath,
-  dbPath,
   autoStart,
   delayTime,
   storeRecords,
@@ -143,32 +117,4 @@ const {
 } = useSettings()
 
 watch(themeMode, (val) => { settings.theme = val }, { immediate: true })
-
-const defaultConfigDirPlaceholder = ref('')
-const defaultDbDirPlaceholder = ref('')
-
-onMounted(async () => {
-  try {
-    defaultConfigDirPlaceholder.value = await invoke('default_config_dir')
-    defaultDbDirPlaceholder.value = await invoke('default_db_dir')
-  } catch (e) {
-    console.warn('failed to fetch default paths:', e)
-  }
-})
-
-async function selectPath() {
-  const dir = await open({ directory: true, multiple: false, title: '选择配置存储目录' })
-  if (!dir) return
-  const oldPath = configPath.value || null
-  const snap = JSON.parse(JSON.stringify(settings))
-  snap.configPath = dir
-  await invoke('save_config', { json: JSON.stringify(snap), path: oldPath })
-  configPath.value = dir
-}
-
-async function selectDbPath() {
-  const dir = await open({ directory: true, multiple: false, title: '选择翻译记录存储目录' })
-  if (!dir) return
-  dbPath.value = dir
-}
 </script>

@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+
 
 #[cfg(not(debug_assertions))]
 const APP_SALT: &[u8] = b"youdao-fanyi-v1";
@@ -21,8 +20,6 @@ const TOKEN_CACHE_SALT: &[u8] = b"youdao-fanyi-ocr-v1";
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub theme: String,
-    pub config_path: String,
-    pub db_path: String,
     pub auto_start: bool,
     pub delay_time: u64,
     pub volume: u64,
@@ -38,8 +35,6 @@ pub struct Settings {
     pub ocr_keys: HashMap<String, String>,
     pub close_behavior: String,
     pub show_screenshot_crosshair: bool,
-    pub use_hugging_face_mirror: bool,
-    pub use_github_mirror: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,8 +78,6 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: "system".into(),
-            config_path: String::new(),
-            db_path: String::new(),
             auto_start: false,
             delay_time: crate::constants::DEFAULT_DELAY_TIME_MS,
             volume: 100,
@@ -100,8 +93,6 @@ impl Default for Settings {
             ocr_keys: HashMap::new(),
             close_behavior: "ask".into(),
             show_screenshot_crosshair: true,
-            use_hugging_face_mirror: false,
-            use_github_mirror: false,
         }
     }
 }
@@ -119,10 +110,27 @@ pub fn filename() -> &'static str {
     }
 }
 
+#[cfg(debug_assertions)]
+pub fn dev_root() -> PathBuf {
+    let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    p.pop();
+    p
+}
+
 fn data_root() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(crate::constants::APP_DATA_DIR)
+    #[cfg(debug_assertions)]
+    {
+        dev_root()
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                return exe_dir.to_path_buf();
+            }
+        }
+        PathBuf::from(".")
+    }
 }
 
 pub fn default_config_dir_inner() -> PathBuf {
@@ -131,6 +139,10 @@ pub fn default_config_dir_inner() -> PathBuf {
 
 pub fn default_db_dir_inner() -> PathBuf {
     data_root().join("db")
+}
+
+pub fn default_models_dir_inner() -> PathBuf {
+    data_root().join("models")
 }
 
 fn default_path() -> PathBuf {
@@ -180,22 +192,6 @@ pub fn decrypt_data(raw: &[u8]) -> Result<Vec<u8>, String> {
     cipher
         .decrypt(nonce, ciphertext)
         .map_err(|e| format!("decrypt: {}", e))
-}
-
-fn resolve_path(custom: Option<&str>) -> PathBuf {
-    match custom {
-        Some(p) => {
-            let path = PathBuf::from(p);
-            // old-style: path includes filename (has extension)
-            // new-style: path is a directory, append filename
-            if path.extension().is_some() {
-                path
-            } else {
-                path.join(filename())
-            }
-        }
-        None => default_path(),
-    }
 }
 
 fn serialize_settings(settings: &Settings) -> Result<String, String> {
@@ -248,8 +244,8 @@ fn decode_settings(p: &std::path::Path, raw: Vec<u8>) -> Result<String, String> 
     }
 }
 
-pub fn load(path: Option<&str>) -> Result<String, String> {
-    let p = resolve_path(path);
+pub fn load() -> Result<String, String> {
+    let p = default_path();
     if !p.exists() {
         return serialize_settings(&Settings::default());
     }
@@ -257,55 +253,8 @@ pub fn load(path: Option<&str>) -> Result<String, String> {
     decode_settings(&p, raw)
 }
 
-const CONFIG_CACHE_TTL: Duration = Duration::from_secs(1);
-static CONFIG_CACHE: Mutex<Option<(String, Instant)>> = Mutex::new(None);
-
-pub fn invalidate_cache() {
-    if let Ok(mut cache) = CONFIG_CACHE.lock() {
-        *cache = None;
-    }
-}
-
-/// Load config from default path, resolving configPath if set.
-pub fn load_effective() -> Result<String, String> {
-    {
-        if let Ok(cache) = CONFIG_CACHE.lock() {
-            if let Some((json, expiry)) = &*cache {
-                if *expiry > Instant::now() {
-                    return Ok(json.clone());
-                }
-            }
-        }
-    }
-    let json = load(None)?;
-    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
-        if let Some(path) = v[crate::constants::CFG_CONFIG_PATH].as_str().filter(|p| !p.is_empty()) {
-            if let Ok(actual) = load(Some(path)) {
-                if let Ok(mut cache) = CONFIG_CACHE.lock() {
-                    *cache = Some((actual.clone(), Instant::now() + CONFIG_CACHE_TTL));
-                }
-                return Ok(actual);
-            }
-        }
-    }
-    if let Ok(mut cache) = CONFIG_CACHE.lock() {
-        *cache = Some((json.clone(), Instant::now() + CONFIG_CACHE_TTL));
-    }
-    Ok(json)
-}
-
-pub fn remove(path: Option<&str>) -> Result<(), String> {
-    invalidate_cache();
-    let p = resolve_path(path);
-    if p.exists() {
-        std::fs::remove_file(&p).map_err(|e| format!("remove config: {}", e))?;
-    }
-    Ok(())
-}
-
-pub fn save(json: &str, path: Option<&str>) -> Result<(), String> {
-    invalidate_cache();
-    let p = resolve_path(path);
+pub fn save(json: &str) -> Result<(), String> {
+    let p = default_path();
 
     // Validate before writing — reject malformed JSON
     let _ = parse_settings(json)?;
@@ -342,31 +291,16 @@ pub fn save(json: &str, path: Option<&str>) -> Result<(), String> {
 use tauri::command;
 
 #[command]
-pub fn load_config(path: Option<String>) -> Result<String, String> {
-    load(path.as_deref())
+pub fn load_config() -> Result<String, String> {
+    load()
 }
 
 #[command]
-pub fn save_config(json: String, path: Option<String>) -> Result<(), String> {
-    save(&json, path.as_deref())
+pub fn save_config(json: String) -> Result<(), String> {
+    save(&json)
 }
 
 #[command]
 pub fn config_filename() -> String {
     filename().to_string()
-}
-
-#[command]
-pub fn default_config_dir() -> String {
-    default_config_dir_inner().to_string_lossy().to_string()
-}
-
-#[command]
-pub fn default_db_dir() -> String {
-    default_db_dir_inner().to_string_lossy().to_string()
-}
-
-#[command]
-pub fn remove_config(path: Option<String>) -> Result<(), String> {
-    remove(path.as_deref())
 }

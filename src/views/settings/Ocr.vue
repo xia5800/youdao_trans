@@ -25,7 +25,7 @@
               <div class="detail-field">
                 <label>HuggingFace 镜像</label>
                 <div class="toggle-row">
-                  <div class="switch" :class="{ active: settings.useHuggingFaceMirror }" @click="settings.useHuggingFaceMirror = !settings.useHuggingFaceMirror">
+                  <div class="switch" :class="{ active: useHuggingFaceMirror }" @click="useHuggingFaceMirror = !useHuggingFaceMirror">
                     <div class="switch-knob"></div>
                   </div>
                   <span class="toggle-label">使用镜像站点（hf-mirror.com）下载模型</span>
@@ -34,7 +34,7 @@
               <div class="detail-field">
                 <label>GitHub 加速</label>
                 <div class="toggle-row">
-                  <div class="switch" :class="{ active: settings.useGitHubMirror }" @click="settings.useGitHubMirror = !settings.useGitHubMirror">
+                  <div class="switch" :class="{ active: useGitHubMirror }" @click="useGitHubMirror = !useGitHubMirror">
                     <div class="switch-knob"></div>
                   </div>
                   <span class="toggle-label">使用加速源（mirrors-us01.git-zh.com）下载字典文件</span>
@@ -225,8 +225,13 @@ import { listen } from '@tauri-apps/api/event'
 import { useSettings } from '../../composables/useSettings.js'
 import { useUtils } from '../../composables/useUtils.js'
 
-const { settings, activeOcr, ocrKeys, configPath } = useSettings()
+const { settings, activeOcr, ocrKeys } = useSettings()
 const { showToastOnce, showToast, openUrl } = useUtils()
+
+const useHuggingFaceMirror = ref(localStorage.getItem('useHuggingFaceMirror') === 'true')
+const useGitHubMirror = ref(localStorage.getItem('useGitHubMirror') === 'true')
+watch(useHuggingFaceMirror, v => localStorage.setItem('useHuggingFaceMirror', v))
+watch(useGitHubMirror, v => localStorage.setItem('useGitHubMirror', v))
 
 const ocrList = [
   { key: 'paddle_ocr', name: 'PaddleOCR', desc: '本地 PaddleOCR 模型识别，无需 API Key，激活即用' },
@@ -389,7 +394,7 @@ async function startDownload() {
   downloadList.value = []
 
   try {
-    await invoke('download_ocr_models', { useMirror: settings.useHuggingFaceMirror, useGithubMirror: settings.useGitHubMirror })
+    await invoke('download_ocr_models', { useMirror: useHuggingFaceMirror.value, useGithubMirror: useGitHubMirror.value })
     await refreshModelStatus()
     showToastOnce('模型下载完成')
   } catch (e) {
@@ -410,7 +415,7 @@ async function retryDownload(fileName) {
   }
 
   try {
-    await invoke('retry_download_ocr_file', { fileName, useMirror: settings.useHuggingFaceMirror, useGithubMirror: settings.useGitHubMirror })
+    await invoke('retry_download_ocr_file', { fileName, useMirror: useHuggingFaceMirror.value, useGithubMirror: useGitHubMirror.value })
     await refreshModelStatus()
   } catch (e) {
     const item2 = downloadList.value.find(d => d.fileName === fileName)
@@ -468,8 +473,7 @@ async function saveConfig() {
   }
 
   try {
-    const path = configPath.value || null
-    await invoke('save_config', { json: JSON.stringify(settings), path })
+    await invoke('save_config', { json: JSON.stringify(settings) })
     showToastOnce('已保存')
   } catch (e) {
     showToast(`保存失败: ${e}`)

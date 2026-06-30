@@ -6,54 +6,18 @@ use oar_ocr::prelude::*;
 use oar_ocr::domain::tasks::TextDetectionConfig;
 use crate::download::{DownloadSpec, check_files};
 
-const CARGO_DIR: &str = env!("CARGO_MANIFEST_DIR");
-
 struct OcrEngine {
     engine: OAROCR,
 }
 
-const PADDLE_DIR: &str = "PaddleOCR";
-
 /// The data directory where downloaded PaddleOCR models are stored.
 fn models_data_dir() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(crate::constants::APP_DATA_DIR)
-        .join("models")
-        .join("ocr")
-        .join(PADDLE_DIR)
+    crate::config::default_models_dir_inner().join("ocr").join(crate::constants::OCR_MODEL_DIR)
 }
 
 /// All directories that may contain PaddleOCR models, in priority order.
 pub fn candidate_dirs() -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-
-    // 1) Portable mode: relative to executable
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            dirs.push(exe_dir.join("models").join("ocr").join(PADDLE_DIR));
-        }
-    }
-
-    // 2) User data directory (downloaded models)
-    dirs.push(models_data_dir());
-
-    // 3) Development: relative to CARGO_MANIFEST_DIR
-    let mut from_manifest = PathBuf::from(CARGO_DIR);
-    from_manifest.pop();
-    from_manifest = from_manifest.join("models").join("ocr").join(PADDLE_DIR);
-    dirs.push(from_manifest);
-
-    // 4) Current working directory
-    dirs.push(
-        std::env::current_dir()
-            .unwrap_or_default()
-            .join("models")
-            .join("ocr")
-            .join(PADDLE_DIR),
-    );
-
-    dirs
+    vec![models_data_dir()]
 }
 
 fn models_dir() -> PathBuf {
@@ -61,36 +25,15 @@ fn models_dir() -> PathBuf {
         .into_iter()
         .find(|d| {
             d.exists()
-                && d.join("PP-OCRv6_medium_det.onnx").exists()
-                && d.join("PP-OCRv6_medium_rec.onnx").exists()
-                && d.join("ppocrv6_dict.txt").exists()
+                && d.join(crate::constants::OCR_DET_MODEL).exists()
+                && d.join(crate::constants::OCR_REC_MODEL).exists()
+                && d.join(crate::constants::OCR_DICT_FILE).exists()
         })
-        .unwrap_or_else(|| {
-            let mut p = PathBuf::from(CARGO_DIR);
-            p.pop();
-            p.join("models").join("ocr").join(PADDLE_DIR)
-        })
+        .unwrap_or_else(models_data_dir)
 }
 
 /// Where downloaded model files land.
 fn download_dir() -> PathBuf {
-    // Development: download into the project tree
-    let dev_path = {
-        let mut p = PathBuf::from(CARGO_DIR);
-        p.pop();
-        p.join("models").join("ocr").join(PADDLE_DIR)
-    };
-    if PathBuf::from(CARGO_DIR).exists() {
-        return dev_path;
-    }
-
-    // Production: exe-relative (portable), then user data dir
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            return exe_dir.join("models").join("ocr").join(PADDLE_DIR);
-        }
-    }
-
     models_data_dir()
 }
 
@@ -99,21 +42,21 @@ pub fn download_specs() -> Vec<DownloadSpec> {
     let dest = download_dir();
     vec![
         DownloadSpec {
-            file_name: "PP-OCRv6_medium_det.onnx".into(),
+            file_name: crate::constants::OCR_DET_MODEL.into(),
             hf_repo: Some("PaddlePaddle/PP-OCRv6_medium_det_onnx".into()),
             remote_file_name: Some("inference.onnx".into()),
             direct_url: None,
             dest_dir: dest.clone(),
         },
         DownloadSpec {
-            file_name: "PP-OCRv6_medium_rec.onnx".into(),
+            file_name: crate::constants::OCR_REC_MODEL.into(),
             hf_repo: Some("PaddlePaddle/PP-OCRv6_medium_rec_onnx".into()),
             remote_file_name: Some("inference.onnx".into()),
             direct_url: None,
             dest_dir: dest.clone(),
         },
         DownloadSpec {
-            file_name: "ppocrv6_dict.txt".into(),
+            file_name: crate::constants::OCR_DICT_FILE.into(),
             hf_repo: None,
             remote_file_name: None,
             direct_url: Some(
@@ -138,9 +81,9 @@ static ENGINE: OnceLock<Mutex<Option<OcrEngine>>> = OnceLock::new();
 
 fn init_engine() -> Result<OcrEngine, String> {
     let dir = models_dir();
-    let det_path = dir.join("PP-OCRv6_medium_det.onnx");
-    let rec_path = dir.join("PP-OCRv6_medium_rec.onnx");
-    let dict_path = dir.join("ppocrv6_dict.txt");
+    let det_path = dir.join(crate::constants::OCR_DET_MODEL);
+    let rec_path = dir.join(crate::constants::OCR_REC_MODEL);
+    let dict_path = dir.join(crate::constants::OCR_DICT_FILE);
 
     if !det_path.exists() {
         return Err(format!("检测模型不存在: {}", det_path.display()));

@@ -7,7 +7,7 @@ fn extract_from_cfg(cfg: &str, key: &str) -> Option<String> {
 
 fn load_combo(key: &str, default_val: &str) -> String {
     let default = || default_val.to_string();
-    let json = match crate::config::load_effective() {
+    let json = match crate::config::load() {
         Ok(j) => j,
         Err(_) => return default(),
     };

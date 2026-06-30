@@ -149,7 +149,7 @@ fn read_selection_config(
 }
 
 fn load_config_any() -> Option<String> {
-    crate::config::load_effective().ok()
+    crate::config::load().ok()
 }
 
 fn payload_for_window(app: &tauri::AppHandle, payload: &SelectionPayload) {

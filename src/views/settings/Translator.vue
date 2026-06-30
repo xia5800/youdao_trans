@@ -223,7 +223,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useSettings } from '../../composables/useSettings.js'
 import { useUtils } from '../../composables/useUtils.js'
 
-const { settings, activeTranslator, translatorKeys, configPath } = useSettings()
+const { settings, activeTranslator, translatorKeys } = useSettings()
 const { showToastOnce, openUrl } = useUtils()
 
 const translatorList = [
@@ -379,8 +379,7 @@ async function saveConfig() {
   }
 
   try {
-    const path = configPath.value || null
-    await invoke('save_config', { json: JSON.stringify(settings), path })
+    await invoke('save_config', { json: JSON.stringify(settings) })
     showToastOnce('已保存')
   } catch (e) {
     showToast(`保存失败: ${e}`)

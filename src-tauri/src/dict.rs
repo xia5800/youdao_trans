@@ -3,36 +3,8 @@ use rusqlite::Connection;
 use serde::Serialize;
 use std::path::PathBuf;
 
-const CARGO_DIR: &str = env!("CARGO_MANIFEST_DIR");
-
 fn db_path() -> PathBuf {
-    // 1) Portable mode: relative to the executable's directory
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            let portable = exe_dir.join("models").join("dict").join("ecdict.db");
-            if portable.exists() {
-                return portable;
-            }
-        }
-    }
-
-    // 2) Development: relative to CARGO_MANIFEST_DIR (project/src-tauri)
-    let from_manifest = {
-        let mut p = PathBuf::from(CARGO_DIR);
-        p.pop();
-        p.join("models").join("dict").join("ecdict.db")
-    };
-    if from_manifest.exists() {
-        return from_manifest;
-    }
-
-    // 3) Fallback: current working directory
-    let cwd = PathBuf::from("models").join("dict").join("ecdict.db");
-    if cwd.exists() {
-        return cwd;
-    }
-
-    from_manifest
+    crate::config::default_models_dir_inner().join("dict/ecdict.db")
 }
 
 #[derive(Serialize)]

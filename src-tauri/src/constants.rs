@@ -23,12 +23,10 @@ pub const ROUTE_SETTINGS: &str = "/settings";
 pub const ROUTE_SETTINGS_HOTKEY: &str = "/settings/hotkey";
 
 pub const APP_NAME: &str = "优道翻译";
-pub const APP_DATA_DIR: &str = "youdao-fanyi";
 
 pub const SCREENSHOT_HTML: &str = "screenshot.html";
 pub const POPUP_HTML: &str = "popup.html";
 
-pub const CFG_CONFIG_PATH: &str = "configPath";
 pub const CFG_HOTKEYS: &str = "hotkeys";
 pub const CFG_ACTIVE_OCR: &str = "activeOcr";
 pub const CFG_OCR_KEYS: &str = "ocrKeys";
@@ -43,3 +41,8 @@ pub const KEY_SIM_DELAY_MS: u64 = 20;
 
 pub const SELECTION_RETRY_COUNT: u32 = 3;
 pub const DICT_DEFAULT_SUGGESTION_LIMIT: u32 = 10;
+
+pub const OCR_MODEL_DIR: &str = "PaddleOCR";
+pub const OCR_DET_MODEL: &str = "PP-OCRv6_medium_det.onnx";
+pub const OCR_REC_MODEL: &str = "PP-OCRv6_medium_rec.onnx";
+pub const OCR_DICT_FILE: &str = "ppocrv6_dict.txt";
