@@ -8,8 +8,6 @@ const FALLBACK = {
   theme: 'system',
   autoStart: false,
   delayTime: 600,
-  volume: 100,
-  speed: 1.0,
   storeRecords: true,
   replaceNewlines: false,
   autoTranslate: false,
@@ -116,9 +114,6 @@ async function load() {
     Object.assign(state, data)
   } catch (e) {
     console.warn('load_config error, using defaults:', e)
-  }
-  if (state.speed > 3) {
-    state.speed = 1.0
   }
   if (!state.activeTranslator) {
     state.activeTranslator = 'microsoft_free'

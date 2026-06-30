@@ -4,35 +4,13 @@
 
     <div class="setting-item">
       <div>
-        <div class="setting-label">语音播放音量</div>
-        <div class="setting-desc">默认范围: 0 - 100%</div>
-      </div>
-      <div class="setting-control">
-        <input type="range" class="slider" :min="VOL_RANGE.min" :max="VOL_RANGE.max" :step="VOL_RANGE.step" v-model.number="volume">
-        <span class="volume-value">{{ volume }}%</span>
-      </div>
-    </div>
-
-    <div class="setting-item">
-      <div>
-        <div class="setting-label">语音播放语速</div>
-        <div class="setting-desc">默认范围: 0.5x - 2x</div>
-      </div>
-      <div class="setting-control">
-        <input type="range" class="slider" :min="SPEED_RANGE.min" :max="SPEED_RANGE.max" :step="SPEED_RANGE.step" v-model.number="speed">
-        <span class="volume-value">{{ speed.toFixed(1) }}x</span>
-      </div>
-    </div>
-
-    <div class="setting-item">
-      <div>
         <div class="setting-label">语音引擎</div>
         <div class="setting-desc">选择朗读译文时使用的语音引擎</div>
       </div>
-      <select class="select-input" v-model="ttsEngine">
-        <option value="browser">浏览器内置 (speechSynthesis)</option>
-        <option value="local">Edge TTS (云服务)</option>
-      </select>
+      <SelectInput
+        :options="engineOptions"
+        v-model="ttsEngine"
+      />
     </div>
 
     <div v-if="ttsEngine === 'local'" class="setting-item">
@@ -40,28 +18,36 @@
         <div class="setting-label">发声人</div>
         <div class="setting-desc">选择 Edge TTS 使用的语音</div>
       </div>
-      <select class="select-input" v-model="ttsVoice">
-        <option value="zh-CN-XiaoxiaoNeural">晓晓 (中文女性)</option>
-        <option value="zh-CN-YunxiNeural">云希 (中文男性)</option>
-        <option value="en-US-AriaNeural">Aria (英文女性)</option>
-        <option value="en-US-GuyNeural">Guy (英文男性)</option>
-        <option value="ja-JP-NanamiNeural">Nanami (日语女性)</option>
-        <option value="ja-JP-KeitaNeural">Keita (日语男性)</option>
-        <option value="ko-KR-SunHiNeural">Sun-Hi (韩语女性)</option>
-        <option value="ko-KR-InJoonNeural">InJoon (韩语男性)</option>
-        <option value="fr-FR-DeniseNeural">Denise (法语女性)</option>
-        <option value="de-DE-KatjaNeural">Katja (德语女性)</option>
-        <option value="es-ES-ElviraNeural">Elvira (西语女性)</option>
-      </select>
+      <SelectInput
+        :options="voiceOptions"
+        v-model="ttsVoice"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
+import SelectInput from '../../components/SelectInput.vue'
 import { useSettings } from '../../composables/useSettings.js'
 
-const { volume, speed, ttsEngine, ttsVoice } = useSettings()
+const { ttsEngine, ttsVoice } = useSettings()
 
-const VOL_RANGE = { min: 0, max: 100, unit: '%', step: 1 }
-const SPEED_RANGE = { min: 0.5, max: 2, unit: 'x', step: 0.1 }
+const engineOptions = [
+  { value: 'browser', label: '浏览器内置 (speechSynthesis)' },
+  { value: 'local', label: 'Edge TTS (云服务)' },
+]
+
+const voiceOptions = [
+  { value: 'zh-CN-XiaoxiaoNeural', label: '晓晓 (中文女性)' },
+  { value: 'zh-CN-YunxiNeural', label: '云希 (中文男性)' },
+  { value: 'en-US-AriaNeural', label: 'Aria (英文女性)' },
+  { value: 'en-US-GuyNeural', label: 'Guy (英文男性)' },
+  { value: 'ja-JP-NanamiNeural', label: 'Nanami (日语女性)' },
+  { value: 'ja-JP-KeitaNeural', label: 'Keita (日语男性)' },
+  { value: 'ko-KR-SunHiNeural', label: 'Sun-Hi (韩语女性)' },
+  { value: 'ko-KR-InJoonNeural', label: 'InJoon (韩语男性)' },
+  { value: 'fr-FR-DeniseNeural', label: 'Denise (法语女性)' },
+  { value: 'de-DE-KatjaNeural', label: 'Katja (德语女性)' },
+  { value: 'es-ES-ElviraNeural', label: 'Elvira (西语女性)' },
+]
 </script>

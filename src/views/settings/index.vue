@@ -295,12 +295,6 @@ function navigate(id) {
   cursor: default;
 }
 
-.volume-value {
-  font-size: 12px;
-  color: var(--text-secondary);
-  min-width: 35px;
-}
-
 .checkbox-label {
   display: flex;
   align-items: center;

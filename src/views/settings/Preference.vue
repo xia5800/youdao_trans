@@ -87,17 +87,17 @@
         <div class="setting-label">关闭主窗口时</div>
         <div class="setting-desc">点击关闭按钮后的默认操作</div>
       </div>
-      <select class="select-input" v-model="settings.closeBehavior">
-        <option value="ask">每次询问</option>
-        <option value="tray">最小化到系统托盘</option>
-        <option value="exit">退出程序</option>
-      </select>
+      <SelectInput
+        :options="closeOptions"
+        v-model="settings.closeBehavior"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, watch } from 'vue'
+import SelectInput from '../../components/SelectInput.vue'
 import { useTheme } from '../../composables/useTheme.js'
 import { useSettings } from '../../composables/useSettings.js'
 import { useHotkey } from '../../composables/useHotkey.js'
@@ -115,6 +115,12 @@ const {
   autoTranslate,
   autoTranslateDelay,
 } = useSettings()
+
+const closeOptions = [
+  { value: 'ask', label: '每次询问' },
+  { value: 'tray', label: '最小化到系统托盘' },
+  { value: 'exit', label: '退出程序' },
+]
 
 watch(themeMode, (val) => { settings.theme = val }, { immediate: true })
 </script>

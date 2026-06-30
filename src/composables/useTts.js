@@ -11,7 +11,7 @@ function mapLang(lang) {
 }
 
 export function useTts() {
-  const { volume, speed, ttsEngine, ttsVoice } = useSettings()
+  const { ttsEngine, ttsVoice } = useSettings()
 
   let audioCtx = null
   let sourceNode = null
@@ -37,7 +37,7 @@ export function useTts() {
       const mp3Bytes = await invoke('tts_speak', {
         text,
         voice: ttsVoice.value,
-        speed: speed.value ?? 1.0,
+        speed: 1.0,
       })
 
       if (!mp3Bytes || mp3Bytes.length === 0) {
@@ -99,8 +99,8 @@ export function useTts() {
       window.speechSynthesis.cancel()
       const utter = new SpeechSynthesisUtterance(text)
       utter.lang = mapLang(lang)
-      utter.volume = (volume.value ?? 100) / 100
-      utter.rate = speed.value ?? 1.0
+      utter.volume = 1
+      utter.rate = 1.0
       utter.onstart = () => callbacks?.onStart?.()
       utter.onend = () => callbacks?.onEnd?.()
       utter.onerror = (e) => {
