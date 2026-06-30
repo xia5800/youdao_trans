@@ -121,9 +121,10 @@ const toolbarStyle = computed(() => {
   const tbH = 42, margin = 8
   let top = r.y + r.h + margin
   if (top + tbH > window.innerHeight - 10) top = r.y - tbH - margin
-  let left = r.x + r.w - 160
-  if (left < 8) left = 8
-  return { top: top + 'px', left: left + 'px' }
+  return {
+    top: top + 'px',
+    right: Math.max(8, window.innerWidth - r.x - r.w) + 'px',
+  }
 })
 
 function onMouseDown(e) {
