@@ -25,9 +25,15 @@ fn db_path() -> PathBuf {
 fn open() -> Result<Connection, String> {
     let p = db_path();
     if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("create db dir: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| {
+            log::error!("创建历史记录数据库目录失败: {}", e);
+            format!("create db dir: {}", e)
+        })?;
     }
-    Connection::open(&p).map_err(|e| format!("open db: {}", e))
+    Connection::open(&p).map_err(|e| {
+        log::error!("打开历史记录数据库失败: {}", e);
+        format!("open db: {}", e)
+    })
 }
 
 fn init() -> Result<(), String> {
@@ -43,7 +49,10 @@ fn init() -> Result<(), String> {
             favorite INTEGER NOT NULL DEFAULT 0
         )",
     )
-    .map_err(|e| format!("init history db: {}", e))
+    .map_err(|e| {
+        log::error!("初始化历史记录数据库表失败: {}", e);
+        format!("init history db: {}", e)
+    })
 }
 
 // ---- Tauri commands ----

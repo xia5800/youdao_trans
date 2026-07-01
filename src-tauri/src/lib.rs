@@ -15,13 +15,89 @@ mod window;
 
 use tauri::{Listener, Manager};
 
+fn init_logger() {
+    let log_dir = crate::config::default_logs_dir_inner();
+
+    let _ = std::fs::create_dir_all(&log_dir);
+
+    cleanup_old_logs(&log_dir, 7_usize);
+
+    let file_path = log_dir.join(format!(
+        "app_{}.log",
+        chrono::Local::now().format("%Y-%m-%d")
+    ));
+
+    let file = match fern::log_file(&file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("打开日志文件失败 {}: {}", file_path.display(), e);
+            return;
+        }
+    };
+
+    let dispatch_base = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}] [{}] {} - {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Warn)
+        .chain(file);
+
+    #[cfg(debug_assertions)]
+    let dispatch = fern::Dispatch::new()
+        .chain(
+            fern::Dispatch::new()
+                .format(|out, message, record| {
+                    out.finish(format_args!(
+                        "[{}] [{}] {} - {}",
+                        chrono::Local::now().format("%H:%M:%S"),
+                        record.level(),
+                        record.target(),
+                        message
+                    ))
+                })
+                .level(log::LevelFilter::Info)
+                .chain(std::io::stdout()),
+        )
+        .chain(dispatch_base);
+
+    #[cfg(not(debug_assertions))]
+    let dispatch = dispatch_base;
+
+    if let Err(e) = dispatch.apply() {
+        eprintln!("logger already set: {}", e);
+    }
+}
+
+fn cleanup_old_logs(dir: &std::path::Path, keep_count: usize) {
+    let Ok(mut entries) = std::fs::read_dir(dir).map(|e| e.flatten().filter_map(|e| {
+        let path = e.path();
+        let name = path.file_stem().and_then(|s| s.to_str())?;
+        if name.starts_with("app_") { Some(path) } else { None }
+    }).collect::<Vec<_>>()) else { return };
+    entries.sort();
+    if entries.len() > keep_count {
+        for old in entries.iter().take(entries.len() - keep_count) {
+            let _ = std::fs::remove_file(old);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize rustls with ring provider (avoids conflict with aws-lc-rs)
     let _ = rustls::crypto::ring::default_provider().install_default();
 
+    init_logger();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            log::info!("收到单实例通知，显示主窗口");
             window::show_main(app);
         }))
         .plugin(tauri_plugin_notification::init())
@@ -38,14 +114,18 @@ pub fn run() {
                         let is_screenshot = hotkey::shortcut_equals(&shortcut_str, &screenshot_combo);
                         if is_screenshot {
                             if let Some(main) = app.get_webview_window(constants::WINDOW_MAIN) {
-                                let _ = main.hide();
+                                if let Err(e) = main.hide() {
+                                    log::error!("快捷键触发的隐藏主窗口失败: {}", e);
+                                }
                             }
                         }
 
                         tauri::async_runtime::spawn(async move {
                             let selection_combo = hotkey::load_selection_combo();
                             if is_screenshot {
-                                let _ = capture::prepare_screenshot(app.clone()).await;
+                                if let Err(e) = capture::prepare_screenshot(app.clone()).await {
+                                    log::error!("快捷键截图翻译失败: {}", e);
+                                }
                             } else if hotkey::shortcut_equals(&shortcut_str, &selection_combo) {
                                 selection::handle_selection_translate(app).await;
                             }
@@ -55,14 +135,6 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
             let is_autostart = std::env::args().any(|arg| arg == "--autostart");
             app.manage(window::AutostartLaunched(std::sync::Mutex::new(is_autostart)));
 
@@ -71,35 +143,44 @@ pub fn run() {
             app.manage(tray::ShortcutsEnabled(std::sync::Mutex::new(true)));
             app.manage(dict::DictDownloadState::new());
 
-            let window = app.get_webview_window("main").unwrap();
+            let window = app.get_webview_window("main")
+                .expect("main window should exist in setup");
 
-            let _ = tray::build(app.handle());
+            if let Err(e) = tray::build(app.handle()) {
+                log::error!("构建系统托盘失败: {}", e);
+            }
 
-            // Center window on the monitor where the mouse cursor is
             if let Some((cx, cy)) = window::cursor_position() {
-                if let Ok(monitors) = window.available_monitors() {
-                    for m in &monitors {
-                        let p = m.position();
-                        let s = m.size();
-                        if cx >= p.x
-                            && cx < p.x + s.width as i32
-                            && cy >= p.y
-                            && cy < p.y + s.height as i32
-                        {
-                            let ws = window.outer_size().unwrap_or_default();
-                            let wx = p.x + (s.width as i32 - ws.width as i32) / 2;
-                            let wy = p.y + (s.height as i32 - ws.height as i32) / 2;
-                            let _ = window.set_position(tauri::PhysicalPosition::new(
-                                wx.max(p.x),
-                                wy.max(p.y),
-                            ));
-                            break;
+                match window.available_monitors() {
+                    Ok(monitors) => {
+                        for m in &monitors {
+                            let p = m.position();
+                            let s = m.size();
+                            if cx >= p.x
+                                && cx < p.x + s.width as i32
+                                && cy >= p.y
+                                && cy < p.y + s.height as i32
+                            {
+                                let ws = window.outer_size().unwrap_or_default();
+                                let wx = p.x + (s.width as i32 - ws.width as i32) / 2;
+                                let wy = p.y + (s.height as i32 - ws.height as i32) / 2;
+                                if let Err(e) = window.set_position(tauri::PhysicalPosition::new(
+                                    wx.max(p.x),
+                                    wy.max(p.y),
+                                )) {
+                                    log::error!("设置窗口位置失败: {}", e);
+                                }
+                                break;
+                            }
                         }
                     }
+                    Err(e) => log::error!("获取显示器信息失败: {}", e),
                 }
             }
 
-            let _ = window.set_focus();
+            if let Err(e) = window.set_focus() {
+                log::error!("设置窗口焦点失败: {}", e);
+            }
 
             capture::cleanup_screenshot_file();
 
@@ -107,7 +188,7 @@ pub fn run() {
                 capture::FRONTEND_READY.store(true, std::sync::atomic::Ordering::SeqCst);
             });
 
-            let _ = tauri::WebviewWindowBuilder::new(
+            if let Err(e) = tauri::WebviewWindowBuilder::new(
                 app.handle(),
                 constants::WINDOW_SCREENSHOT_OVERLAY,
                 tauri::WebviewUrl::App(constants::SCREENSHOT_HTML.into()),
@@ -118,7 +199,10 @@ pub fn run() {
             .visible(false)
             .skip_taskbar(true)
             .fullscreen(true)
-            .build();
+            .build()
+            {
+                log::error!("创建截图覆盖层窗口失败: {}", e);
+            }
 
             Ok(())
         })
@@ -126,7 +210,9 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
-                    let _ = window.hide();
+                    if let Err(e) = window.hide() {
+                        log::error!("隐藏主窗口失败: {}", e);
+                    }
                 }
             }
         })

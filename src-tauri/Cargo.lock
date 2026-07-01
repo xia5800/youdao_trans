@@ -187,6 +187,8 @@ dependencies = [
  "aes-gcm",
  "arboard",
  "base64 0.22.1",
+ "chrono",
+ "fern",
  "futures",
  "hf-fetch-model",
  "hmac",

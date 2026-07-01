@@ -50,16 +50,25 @@ pub struct PendingOcrState(pub std::sync::Mutex<Option<String>>);
 pub async fn ocr_command(base64_img: String, app: tauri::AppHandle) -> Result<String, String> {
     let config_json: String = match crate::config::load() {
         Ok(j) => j,
-        Err(_) => return Ok(String::new()),
+        Err(e) => {
+            log::error!("加载OCR配置失败: {}", e);
+            return Ok(String::new());
+        }
     };
     let config_val: serde_json::Value = match serde_json::from_str(&config_json) {
         Ok(v) => v,
-        Err(_) => return Ok(String::new()),
+        Err(e) => {
+            log::error!("解析OCR配置JSON失败: {}", e);
+            return Ok(String::new());
+        }
     };
 
     let active_ocr = match config_val[constants::CFG_ACTIVE_OCR].as_str() {
         Some(p) => p,
-        None => return Ok(String::new()),
+        None => {
+            log::warn!("未配置活动OCR引擎");
+            return Ok(String::new());
+        }
     };
 
     let mut ocr_keys = HashMap::new();
@@ -78,7 +87,9 @@ pub async fn ocr_command(base64_img: String, app: tauri::AppHandle) -> Result<St
     })?;
 
     if !text.is_empty() {
-        let _ = app.emit(constants::EVENT_OCR_RESULT, &text);
+        if let Err(e) = app.emit(constants::EVENT_OCR_RESULT, &text) {
+            log::error!("发送OCR结果到前端失败: {}", e);
+        }
     }
 
     Ok(text)
@@ -91,7 +102,10 @@ pub fn take_pending_ocr(
     state
         .0
         .lock()
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            log::error!("PendingOcrState 锁异常: {}", e);
+            e.to_string()
+        })
         .map(|mut g| g.take())
 }
 
@@ -101,11 +115,18 @@ pub async fn finish_ocr_screenshot(
     app: tauri::AppHandle,
 ) -> Result<(), String> {
     if let Some(state) = app.try_state::<PendingOcrState>() {
-        *state.0.lock().map_err(|e| e.to_string())? = Some(base64_img);
+        match state.0.lock() {
+            Ok(mut s) => *s = Some(base64_img),
+            Err(e) => log::error!("PendingOcrState 锁异常: {}", e),
+        }
     }
     crate::window::show_main(&app);
-    let _ = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_TRANSLATE);
-    let _ = app.emit(constants::EVENT_CHECK_PENDING_OCR, "");
+    if let Err(e) = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_TRANSLATE) {
+        log::error!("通知前端导航至翻译页面失败: {}", e);
+    }
+    if let Err(e) = app.emit(constants::EVENT_CHECK_PENDING_OCR, "") {
+        log::error!("通知前端检查待处理OCR失败: {}", e);
+    }
     Ok(())
 }
 

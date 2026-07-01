@@ -11,9 +11,15 @@ pub fn is_autostart_launched(state: tauri::State<'_, AutostartLaunched>) -> bool
 
 pub fn show_main(app: &tauri::AppHandle) {
     if let Some(main) = app.get_webview_window(constants::WINDOW_MAIN) {
-        let _ = main.show();
-        let _ = main.unminimize();
-        let _ = main.set_focus();
+        if let Err(e) = main.show() {
+            log::error!("显示主窗口失败: {}", e);
+        }
+        if let Err(e) = main.unminimize() {
+            log::error!("取消最小化主窗口失败: {}", e);
+        }
+        if let Err(e) = main.set_focus() {
+            log::error!("设置主窗口焦点失败: {}", e);
+        }
     }
 }
 

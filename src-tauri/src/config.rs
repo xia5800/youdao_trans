@@ -139,6 +139,10 @@ pub fn default_models_dir_inner() -> PathBuf {
     data_root().join("models")
 }
 
+pub fn default_logs_dir_inner() -> PathBuf {
+    data_root().join("logs")
+}
+
 fn default_path() -> PathBuf {
     default_config_dir_inner().join(filename())
 }
@@ -243,7 +247,10 @@ pub fn load() -> Result<String, String> {
     if !p.exists() {
         return serialize_settings(&Settings::default());
     }
-    let raw = std::fs::read(&p).map_err(|e| format!("read config: {}", e))?;
+    let raw = std::fs::read(&p).map_err(|e| {
+        log::error!("读取配置文件失败: {}", e);
+        format!("read config: {}", e)
+    })?;
     decode_settings(&p, raw)
 }
 
@@ -251,7 +258,10 @@ pub fn save(json: &str) -> Result<(), String> {
     let p = default_path();
 
     // Validate before writing — reject malformed JSON
-    let _ = parse_settings(json)?;
+    if let Err(e) = parse_settings(json) {
+        log::error!("保存配置时JSON校验失败: {}", e);
+        return Err(e);
+    }
 
     let data: Vec<u8> = {
         #[cfg(debug_assertions)]
@@ -274,9 +284,15 @@ pub fn save(json: &str) -> Result<(), String> {
     };
 
     if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("create dir: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| {
+            log::error!("创建配置目录失败: {}", e);
+            format!("create dir: {}", e)
+        })?;
     }
-    std::fs::write(&p, data).map_err(|e| format!("write config: {}", e))?;
+    std::fs::write(&p, data).map_err(|e| {
+        log::error!("写入配置文件失败: {}", e);
+        format!("write config: {}", e)
+    })?;
     Ok(())
 }
 

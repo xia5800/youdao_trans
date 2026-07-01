@@ -51,3 +51,5 @@ hf-fetch-model = { version = "0.10", default-features = false }
 msedge-tts = { version = "0.4", features = ["tokio-runtime"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "logging"] }
+fern = "0.7"
+chrono = "0.4"

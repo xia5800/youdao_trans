@@ -64,10 +64,19 @@ pub fn reload_hotkeys(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
-    let _ = app.global_shortcut().unregister_all();
+    if let Err(e) = app.global_shortcut().unregister_all() {
+        log::error!("注销所有全局快捷键失败: {}", e);
+    }
 
     let state = app.state::<crate::tray::ShortcutsEnabled>();
-    if *state.0.lock().unwrap() {
+    let enabled = match state.0.lock() {
+        Ok(guard) => *guard,
+        Err(e) => {
+            log::error!("获取快捷键状态锁失败: {}", e);
+            true
+        }
+    };
+    if enabled {
         try_register(&app, &load_selection_combo(), "划词翻译");
         try_register(&app, &load_screenshot_combo(), "截图");
     }

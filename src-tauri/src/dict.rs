@@ -82,7 +82,10 @@ fn parse_exchange(raw: &str) -> Vec<ExchangeItem> {
 
 pub fn suggestions(prefix: &str, limit: u32) -> Result<Vec<String>, String> {
     let path = db_path();
-    let conn = Connection::open(&path).map_err(|e| format!("open dict: {}", e))?;
+    let conn = Connection::open(&path).map_err(|e| {
+        log::error!("打开词典数据库失败: {}", e);
+        format!("open dict: {}", e)
+    })?;
     let pattern = format!("{}%", prefix);
     let mut stmt = conn
         .prepare(

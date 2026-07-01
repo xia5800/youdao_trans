@@ -32,19 +32,19 @@ pub struct DownloadSpec {
     pub dest_dir: PathBuf,
 }
 
-fn build_direct_url(spec: &DownloadSpec, use_github_mirror: bool) -> String {
-    let url = spec.direct_url.as_ref().expect("direct_url required");
+fn build_direct_url(spec: &DownloadSpec, use_github_mirror: bool) -> Result<String, String> {
+    let url = spec.direct_url.as_ref()
+        .ok_or_else(|| format!("direct_url 未设置 (file: {})", spec.file_name))?;
     if use_github_mirror && url.starts_with("https://raw.githubusercontent.com/") {
-        // raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
-        // → cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/{path}
-        let path = url.strip_prefix("https://raw.githubusercontent.com/").unwrap();
+        let path = url.strip_prefix("https://raw.githubusercontent.com/")
+            .expect("already checked starts_with");
         if let Some(at) = path.match_indices('/').nth(1).map(|(i, _)| i) {
-            format!("{}/{}{}", GITHUB_RAW_MIRROR, &path[..at], &path[at..].replacen('/', "@", 1))
+            Ok(format!("{}/{}{}", GITHUB_RAW_MIRROR, &path[..at], &path[at..].replacen('/', "@", 1)))
         } else {
-            format!("{}/{}", GITHUB_RAW_MIRROR, path)
+            Ok(format!("{}/{}", GITHUB_RAW_MIRROR, path))
         }
     } else {
-        url.clone()
+        Ok(url.clone())
     }
 }
 
@@ -103,7 +103,7 @@ async fn download_direct_url(
     temp_dir: &std::path::Path,
     use_github_mirror: bool,
 ) -> Result<(), String> {
-    let url = build_direct_url(spec, use_github_mirror);
+    let url = build_direct_url(spec, use_github_mirror)?;
     let temp_path = temp_dir.join(&spec.file_name);
     let final_path = spec.dest_dir.join(&spec.file_name);
 

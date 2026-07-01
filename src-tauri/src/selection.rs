@@ -45,41 +45,64 @@ fn send_ctrl_c() {
 
 pub fn get_selected_text(delay_ms: u64) -> Result<String, String> {
     for _attempt in 0..constants::SELECTION_RETRY_COUNT {
-        let mut clipboard = arboard::Clipboard::new()
-            .map_err(|e| format!("clipboard init: {}", e))?;
+        let mut clipboard = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("初始化剪贴板失败: {}", e);
+                return Err(format!("clipboard init: {}", e));
+            }
+        };
 
         let original = clipboard.get_text().ok();
-        clipboard.clear().ok();
+        if let Err(e) = clipboard.clear() {
+            log::error!("清空剪贴板失败: {}", e);
+        }
         drop(clipboard);
 
         send_wm_copy();
         std::thread::sleep(Duration::from_millis(delay_ms));
 
-        let mut clipboard = arboard::Clipboard::new()
-            .map_err(|e| format!("clipboard init: {}", e))?;
+        let mut clipboard = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("初始化剪贴板失败: {}", e);
+                return Err(format!("clipboard init: {}", e));
+            }
+        };
 
         if let Ok(t) = clipboard.get_text() {
             let trimmed = t.trim().to_string();
             if !trimmed.is_empty() {
                 if let Some(orig) = original {
-                    let _ = clipboard.set_text(orig);
+                    if let Err(e) = clipboard.set_text(orig) {
+                        log::error!("恢复原始剪贴板内容失败: {}", e);
+                    }
                 }
                 return Ok(trimmed);
             }
         }
 
-        clipboard.clear().ok();
+        if let Err(e) = clipboard.clear() {
+            log::error!("清空剪贴板失败: {}", e);
+        }
         drop(clipboard);
 
         send_ctrl_c();
         std::thread::sleep(Duration::from_millis(delay_ms));
 
-        let mut clipboard = arboard::Clipboard::new()
-            .map_err(|e| format!("clipboard init: {}", e))?;
+        let mut clipboard = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("初始化剪贴板失败: {}", e);
+                return Err(format!("clipboard init: {}", e));
+            }
+        };
 
         let text = clipboard.get_text().ok();
         if let Some(orig) = original {
-            let _ = clipboard.set_text(orig);
+            if let Err(e) = clipboard.set_text(orig) {
+                log::error!("恢复原始剪贴板内容失败: {}", e);
+            }
         }
 
         if let Some(t) = text {
@@ -154,37 +177,56 @@ fn load_config_any() -> Option<String> {
 
 fn payload_for_window(app: &tauri::AppHandle, payload: &SelectionPayload) {
     if let Some(state) = app.try_state::<SelectionState>() {
-        *state.0.lock().unwrap() = Some(payload.clone());
+        match state.0.lock() {
+            Ok(mut s) => *s = Some(payload.clone()),
+            Err(e) => log::error!("SelectionState 锁异常: {}", e),
+        }
     }
     if let Some(popup) = app.get_webview_window(constants::WINDOW_SELECTION_POPUP) {
-        let _ = popup.emit(constants::EVENT_SELECTION_UPDATE, payload);
+        if let Err(e) = popup.emit(constants::EVENT_SELECTION_UPDATE, payload) {
+            log::error!("发送划词翻译数据到弹窗失败: {}", e);
+        }
     }
 }
 
 fn show_popup_with_payload(app: &tauri::AppHandle, payload: &SelectionPayload, cx: i32, cy: i32) {
     if let Some(state) = app.try_state::<SelectionState>() {
-        *state.0.lock().unwrap() = Some(payload.clone());
+        match state.0.lock() {
+            Ok(mut s) => *s = Some(payload.clone()),
+            Err(e) => log::error!("SelectionState 锁异常: {}", e),
+        }
     }
 
     if let Some(existing) = app.get_webview_window(constants::WINDOW_SELECTION_POPUP) {
-        let _ = existing.set_position(PhysicalPosition::new(cx.max(0) as i32, cy.max(0) as i32));
-        let _ = existing.emit(constants::EVENT_SELECTION_UPDATE, payload);
-    } else if let Ok(window) = tauri::WebviewWindowBuilder::new(
-        app,
-        constants::WINDOW_SELECTION_POPUP,
-        tauri::WebviewUrl::App(constants::POPUP_HTML.into()),
-    )
-    .always_on_top(true)
-    .decorations(false)
-    .transparent(true)
-    .visible(false)
-    .skip_taskbar(true)
-    .inner_size(400.0, 240.0)
-    .resizable(false)
-    .focused(false)
-    .build()
-    {
-        let _ = window.set_position(PhysicalPosition::new(cx.max(0) as i32, cy.max(0) as i32));
+        if let Err(e) = existing.set_position(PhysicalPosition::new(cx.max(0) as i32, cy.max(0) as i32)) {
+            log::error!("设置划词弹窗位置失败: {}", e);
+        }
+        if let Err(e) = existing.emit(constants::EVENT_SELECTION_UPDATE, payload) {
+            log::error!("发送划词数据到弹窗失败: {}", e);
+        }
+    } else {
+        match tauri::WebviewWindowBuilder::new(
+            app,
+            constants::WINDOW_SELECTION_POPUP,
+            tauri::WebviewUrl::App(constants::POPUP_HTML.into()),
+        )
+        .always_on_top(true)
+        .decorations(false)
+        .transparent(true)
+        .visible(false)
+        .skip_taskbar(true)
+        .inner_size(400.0, 240.0)
+        .resizable(false)
+        .focused(false)
+        .build()
+        {
+            Ok(window) => {
+                if let Err(e) = window.set_position(PhysicalPosition::new(cx.max(0) as i32, cy.max(0) as i32)) {
+                    log::error!("设置划词弹窗位置失败: {}", e);
+                }
+            }
+            Err(e) => log::error!("创建划词弹窗失败: {}", e),
+        }
     }
 }
 
@@ -205,7 +247,10 @@ pub fn get_selection_payload(
 
 pub async fn handle_selection_translate(app: tauri::AppHandle) {
     fn emit_err(app: &tauri::AppHandle, msg: &str) {
-        let _ = app.emit(constants::EVENT_SELECTION_TRANSLATE_ERROR, msg);
+        log::error!("划词翻译错误: {}", msg);
+        if let Err(e) = app.emit(constants::EVENT_SELECTION_TRANSLATE_ERROR, msg) {
+            log::error!("发送划词翻译错误事件到前端失败: {}", e);
+        }
     }
 
     let pos = cursor_position();
@@ -298,10 +343,10 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
     .await
     {
         Ok(t) => t,
-        Err(_) => {
+        Err(e) => {
             let failed = SelectionPayload {
                 source_text,
-                translated_text: "翻译失败".to_string(),
+                translated_text: format!("翻译失败: {}", e),
                 target_lang,
                 x: cx,
                 y: cy,

@@ -40,50 +40,84 @@ pub fn build(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .on_menu_event(move |app, event| {
             match event.id.as_ref() {
                 "input_translate" => {
-                    let _ = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ());
-                    let _ = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_TRANSLATE);
+                    if let Err(e) = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ()) {
+                        log::error!("通知前端关闭对话框失败: {}", e);
+                    }
+                    if let Err(e) = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_TRANSLATE) {
+                        log::error!("通知前端导航至翻译页面失败: {}", e);
+                    }
                     window::show_main(app);
                 }
                 "screenshot_translate" => {
                     let app = app.clone();
                     if let Some(main) = app.get_webview_window(constants::WINDOW_MAIN) {
-                        let _ = main.hide();
+                        if let Err(e) = main.hide() {
+                            log::error!("隐藏主窗口失败: {}", e);
+                        }
                     }
                     tauri::async_runtime::spawn(async move {
                         tokio::time::sleep(std::time::Duration::from_millis(constants::SCREENSHOT_TRAY_DELAY_MS)).await;
-                        let _ = capture::prepare_screenshot(app).await;
+                        if let Err(e) = capture::prepare_screenshot(app).await {
+                            log::error!("托盘截图翻译失败: {}", e);
+                        }
                     });
                 }
                 "dict_lookup" => {
-                    let _ = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ());
-                    let _ = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_DICTIONARY);
+                    if let Err(e) = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ()) {
+                        log::error!("通知前端关闭对话框失败: {}", e);
+                    }
+                    if let Err(e) = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_DICTIONARY) {
+                        log::error!("通知前端导航至词典页面失败: {}", e);
+                    }
                     window::show_main(app);
                 }
                 "toggle_shortcuts" => {
                     use tauri_plugin_global_shortcut::GlobalShortcutExt;
                     let state = app.state::<ShortcutsEnabled>();
-                    let mut enabled = state.0.lock().unwrap();
+                    let mut enabled = match state.0.lock() {
+                        Ok(e) => e,
+                        Err(e) => {
+                            log::error!("获取快捷键状态锁失败: {}", e);
+                            return;
+                        }
+                    };
                     if *enabled {
-                        let _ = app.global_shortcut().unregister_all();
+                        if let Err(e) = app.global_shortcut().unregister_all() {
+                            log::error!("注销全局快捷键失败: {}", e);
+                        }
                         *enabled = false;
-                        let _ = toggle_item_clone.set_text("启用快捷键");
-                        let _ = app.emit(constants::EVENT_SHORTCUTS_TOGGLED, false);
+                        if let Err(e) = toggle_item_clone.set_text("启用快捷键") {
+                            log::error!("更新托盘菜单文本失败: {}", e);
+                        }
+                        if let Err(e) = app.emit(constants::EVENT_SHORTCUTS_TOGGLED, false) {
+                            log::error!("通知前端快捷键状态失败: {}", e);
+                        }
                     } else {
                         hotkey::try_register(app, &hotkey::load_selection_combo(), "划词翻译");
                         hotkey::try_register(app, &hotkey::load_screenshot_combo(), "截图");
                         *enabled = true;
-                        let _ = toggle_item_clone.set_text("停用快捷键");
-                        let _ = app.emit(constants::EVENT_SHORTCUTS_TOGGLED, true);
+                        if let Err(e) = toggle_item_clone.set_text("停用快捷键") {
+                            log::error!("更新托盘菜单文本失败: {}", e);
+                        }
+                        if let Err(e) = app.emit(constants::EVENT_SHORTCUTS_TOGGLED, true) {
+                            log::error!("通知前端快捷键状态失败: {}", e);
+                        }
                     }
                 }
                 "settings" => {
-                    let _ = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ());
-                    let _ = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_SETTINGS);
+                    if let Err(e) = app.emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ()) {
+                        log::error!("通知前端关闭对话框失败: {}", e);
+                    }
+                    if let Err(e) = app.emit(constants::EVENT_NAVIGATE, constants::ROUTE_SETTINGS) {
+                        log::error!("通知前端导航至设置页面失败: {}", e);
+                    }
                     window::show_main(app);
                 }
                 "quit" => {
                     if let Some(overlay) = app.get_webview_window(constants::WINDOW_SCREENSHOT_OVERLAY) {
-                        let _ = overlay.close();
+                        if let Err(e) = overlay.close() {
+                            log::error!("关闭截图覆盖层失败: {}", e);
+                        }
                     }
                     app.exit(0);
                 }
@@ -96,7 +130,9 @@ pub fn build(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 ..
             } = event
             {
-                let _ = tray.app_handle().emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ());
+                if let Err(e) = tray.app_handle().emit(constants::EVENT_DISMISS_CLOSE_DIALOG, ()) {
+                    log::error!("托盘点击通知前端失败: {}", e);
+                }
                 window::show_main(tray.app_handle());
             }
         })

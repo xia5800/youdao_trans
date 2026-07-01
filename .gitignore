@@ -30,6 +30,7 @@ dist-portable/
 dist-installer/
 
 ## 日志
+logs/
 *.log
 npm-debug.log*
 

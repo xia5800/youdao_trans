@@ -12,12 +12,17 @@ fn screenshot_file_path() -> std::path::PathBuf {
 pub fn cleanup_screenshot_file() {
     let path = screenshot_file_path();
     if path.exists() {
-        let _ = std::fs::remove_file(&path);
+        if let Err(e) = std::fs::remove_file(&path) {
+            log::error!("清理截图临时文件失败: {}", e);
+        }
     }
 }
 
 fn capture_screen_to_file() -> Result<(String, u32, u32), String> {
-    let screen = Screen::from_point(100, 100).map_err(|e| format!("获取屏幕信息失败: {}", e))?;
+    let screen = crate::window::cursor_position()
+        .and_then(|(cx, cy)| Screen::from_point(cx, cy).ok())
+        .or_else(|| Screen::all().ok()?.into_iter().next())
+        .ok_or_else(|| "无可用屏幕".to_string())?;
     let (mw, mh) = (screen.display_info.width as u32, screen.display_info.height as u32);
 
     let captured = screen.capture_area(0, 0, mw, mh)
@@ -50,7 +55,6 @@ fn build_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     .transparent(true)
     .visible(false)
     .skip_taskbar(true)
-    .fullscreen(true)
     .build()
     .map_err(|e| format!("创建截图窗口失败: {}", e))?;
     Ok(())
@@ -84,6 +88,27 @@ pub async fn prepare_screenshot(app: tauri::AppHandle) -> Result<(), String> {
     let _ = overlay.hide();
 
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    match crate::window::cursor_position()
+        .and_then(|(cx, cy)| Screen::from_point(cx, cy).ok())
+    {
+        Some(screen) => {
+            let sx = screen.display_info.x as i32;
+            let sy = screen.display_info.y as i32;
+            let sw = screen.display_info.width as u32;
+            let sh = screen.display_info.height as u32;
+            if let Err(e) = overlay.set_position(tauri::PhysicalPosition::new(sx, sy)) {
+                log::error!("设置截图覆盖层位置失败: {}", e);
+            }
+            if let Err(e) = overlay.set_size(tauri::PhysicalSize::new(sw, sh)) {
+                log::error!("设置截图覆盖层大小失败: {}", e);
+            }
+            if let Err(e) = overlay.set_fullscreen(true) {
+                log::error!("设置截图覆盖层全屏失败: {}", e);
+            }
+        }
+        None => log::warn!("无法获取鼠标所在屏幕，截图覆盖层将留在默认位置"),
+    }
 
     match capture_screen_to_file() {
         Ok((path, mw, mh)) => {
