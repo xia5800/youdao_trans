@@ -1,3 +1,4 @@
+use crate::util;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -232,14 +233,8 @@ async fn call_ocr(
 }
 
 pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<String, String> {
-    let api_key = keys
-        .get("baidu_ocr-apikey")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "百度云OCR API Key 未配置".to_string())?;
-    let secret_key = keys
-        .get("baidu_ocr-apisecret")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "百度云OCR Secret Key 未配置".to_string())?;
+    let api_key = util::require_key(keys, "baidu_ocr-apikey", "百度云OCR API Key 未配置")?;
+    let secret_key = util::require_key(keys, "baidu_ocr-apisecret", "百度云OCR Secret Key 未配置")?;
 
     let client = reqwest::Client::new();
 

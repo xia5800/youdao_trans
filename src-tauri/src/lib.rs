@@ -11,6 +11,7 @@ mod selection;
 mod translate;
 mod tray;
 mod tts;
+mod util;
 mod window;
 
 use tauri::{Listener, Manager};

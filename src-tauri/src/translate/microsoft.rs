@@ -1,3 +1,4 @@
+use crate::util;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -25,10 +26,7 @@ pub async fn translate(
     target_lang: &str,
     keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let api_key = keys
-        .get("microsoft")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Microsoft Translator API Key 未配置".to_string())?;
+    let api_key = util::require_key(keys, "microsoft", "Microsoft Translator API Key 未配置")?;
     let region = keys.get("microsoft_region").filter(|s| !s.is_empty());
 
     let items = vec![RequestItem { text: text.to_string() }];
@@ -48,7 +46,7 @@ pub async fn translate(
         .query(&params)
         .header("Content-Type", "application/json")
         .header("User-Agent", USER_AGENT)
-        .header("Ocp-Apim-Subscription-Key", api_key.as_str())
+        .header("Ocp-Apim-Subscription-Key", api_key)
         .json(&items);
 
     if let Some(r) = region {

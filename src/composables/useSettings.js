@@ -1,8 +1,9 @@
-import { reactive, watch, toRefs } from 'vue'
+import { reactive, computed, watch, toRefs } from 'vue'
 
 import { invoke } from '@tauri-apps/api/core'
 import { useTheme } from './useTheme.js'
 import { useToast } from './useToast.js'
+import { filled } from './useUtils.js'
 
 const FALLBACK = {
   theme: 'system',
@@ -35,7 +36,6 @@ async function doSave() {
   const bk = state.translatorKeys?.['baidu_appkey']
   const ya = state.translatorKeys?.['youdao_appid']
   const ys = state.translatorKeys?.['youdao_appsecret']
-  const filled = v => v && v.trim()
   if ((filled(mk) && !filled(mr)) || (!filled(mk) && filled(mr))) {
     return
   }
@@ -79,7 +79,12 @@ async function doSave() {
   }
 }
 
-watch(() => ({ ...state }), doSave, { deep: true })
+const autoSaveState = computed(() => {
+  const { translatorKeys, ocrKeys, ...rest } = state
+  return rest
+})
+
+watch(autoSaveState, doSave, { deep: true })
 
 watch(() => state.autoStart, async (val) => {
   if (!loaded) return

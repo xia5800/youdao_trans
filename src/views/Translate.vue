@@ -108,6 +108,7 @@ import { useTts } from '../composables/useTts.js'
 import { useSettings } from '../composables/useSettings.js'
 import { useToast } from '../composables/useToast.js'
 import { useHotkey } from '../composables/useHotkey.js'
+import { copyText } from '../composables/useUtils.js'
 
 const langOptions = [
   { value: 'auto', label: '自动检测' },
@@ -355,11 +356,6 @@ function onPaste(e) {
     targetLang.value = detectTargetLang(sourceText.value)
   }
   scheduleTranslate()
-}
-
-function copyText(text) {
-  if (!text) return
-  navigator.clipboard.writeText(text)
 }
 
 function speak(text, lang, pane) {

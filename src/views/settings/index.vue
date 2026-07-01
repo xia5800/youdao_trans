@@ -368,12 +368,18 @@ function navigate(id) {
 
 .key-input {
   width: 160px;
-  padding: 4px 8px;
+  padding: 8px 8px;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   background: var(--bg-card);
   color: var(--text-primary);
+  outline: none;
+}
+
+.key-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-transparent);
 }
 
 .key-input.input-error {

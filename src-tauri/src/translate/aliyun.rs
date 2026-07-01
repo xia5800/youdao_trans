@@ -1,3 +1,4 @@
+use crate::util;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use hmac::{Hmac, Mac};
@@ -15,14 +16,8 @@ pub async fn translate(
     target_lang: &str,
     keys: &HashMap<String, String>,
 ) -> Result<String, String> {
-    let access_key = keys
-        .get("ali-accesskey")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "阿里翻译 AccessKey 未配置".to_string())?;
-    let secret_key = keys
-        .get("ali-secretkey")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "阿里翻译 SecretKey 未配置".to_string())?;
+    let access_key = util::require_key(keys, "ali-accesskey", "阿里翻译 AccessKey 未配置")?;
+    let secret_key = util::require_key(keys, "ali-secretkey", "阿里翻译 SecretKey 未配置")?;
 
     let now = SystemTime::now();
     let nonce = format!(
@@ -34,7 +29,7 @@ pub async fn translate(
     let ts = utc_timestamp(&now)?;
 
     let mut params = vec![
-        ("AccessKeyId", access_key.as_str()),
+        ("AccessKeyId", access_key),
         ("Action", "TranslateGeneral"),
         ("Format", "JSON"),
         ("FormatType", "text"),

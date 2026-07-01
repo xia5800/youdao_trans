@@ -75,6 +75,11 @@ watch(themeMode, (val) => {
   }
 }, { immediate: true })
 
+export function applySavedTheme() {
+  const theme = loadSaved() || 'system'
+  document.documentElement.setAttribute('data-theme', resolveMode(theme))
+}
+
 export function useTheme() {
   return { themeMode }
 }

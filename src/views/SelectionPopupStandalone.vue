@@ -57,6 +57,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useTts } from '../composables/useTts.js'
+import { copyText } from '../composables/useUtils.js'
 
 const appWindow = getCurrentWebviewWindow()
 
@@ -139,9 +140,7 @@ async function saveToHistory(data) {
 }
 
 function copyResult() {
-  if (translatedText.value) {
-    navigator.clipboard.writeText(translatedText.value)
-  }
+  copyText(translatedText.value)
 }
 
 function speakResult() {

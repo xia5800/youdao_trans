@@ -1,8 +1,8 @@
 <template>
-  <div class="translator-page">
+  <div class="translator-setting">
     <div class="section-title">文字识别 (OCR) 设置</div>
-    <div class="translator-layout">
-      <div class="translator-list">
+    <ServiceConfigLayout>
+    <template #list>
         <div
           v-for="o in ocrList"
           :key="o.key"
@@ -15,8 +15,9 @@
             <div class="switch-knob"></div>
           </div>
         </div>
-      </div>
-      <div class="translator-detail" v-if="selectedOcr">
+    </template>
+    <template #detail>
+      <template v-if="selectedOcr">
         <div class="detail-desc">{{ selectedOcr.desc }}</div>
 
         <template v-if="selectedOcr.key === 'paddle_ocr'">
@@ -97,7 +98,9 @@
             </div>
             <div class="error-hint" v-if="ollamaOcrKeyError">{{ ollamaOcrKeyError }}</div>
           </div>
-          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="btn-save-wrap">
+            <button class="btn-save" @click="saveConfig">保存</button>
+          </div>
           <div class="detail-help">
             <div class="detail-help-title">如何获取：</div>
             <p>确保已部署 Ollama 服务并拉取了视觉模型。可在 Ollama 官网查看支持的模型列表。</p>
@@ -108,29 +111,17 @@
           <div class="detail-fields">
             <div class="detail-field">
               <label>API Key <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['baidu_ocr-apikey'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': baiduOcrKeyError }" placeholder="请输入 API Key" v-model="ocrKeys['baidu_ocr-apikey']">
-                <button class="eye-btn" @click="toggleFieldVisibility('baidu_ocr-apikey')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_ocr-apikey'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['baidu_ocr-apikey']" placeholder="请输入 API Key" />
             </div>
             <div class="detail-field">
               <label>Secret Key <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['baidu_ocr-apisecret'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': baiduOcrKeyError }" placeholder="请输入 Secret Key" v-model="ocrKeys['baidu_ocr-apisecret']">
-                <button class="eye-btn" @click="toggleFieldVisibility('baidu_ocr-apisecret')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['baidu_ocr-apisecret'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['baidu_ocr-apisecret']" placeholder="请输入 Secret Key" />
             </div>
             <div class="error-hint" v-if="baiduOcrKeyError">{{ baiduOcrKeyError }}</div>
           </div>
-          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="btn-save-wrap">
+            <button class="btn-save" @click="saveConfig">保存</button>
+          </div>
           <div class="detail-help">
             <div class="detail-help-title">如何获取：</div>
             <p>前往 <a class="link" @click.prevent="openUrl('https://console.bce.baidu.com')">百度云控制台</a> 创建 OCR 应用，获取 API Key 和 Secret Key。</p>
@@ -141,40 +132,21 @@
           <div class="detail-fields">
             <div class="detail-field">
               <label>App Id <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['xunfei-appid'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="请输入 AppId" v-model="ocrKeys['xunfei-appid']">
-                <button class="eye-btn" @click="toggleFieldVisibility('xunfei-appid')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-appid'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['xunfei-appid']" placeholder="请输入 AppId" />
             </div>
             <div class="detail-field">
               <label>API Key <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['xunfei-apikey'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="请输入 API Key" v-model="ocrKeys['xunfei-apikey']">
-                <button class="eye-btn" @click="toggleFieldVisibility('xunfei-apikey')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-apikey'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['xunfei-apikey']" placeholder="请输入 API Key" />
             </div>
             <div class="detail-field">
               <label>Secret Key <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['xunfei-apisecret'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': xunfeiOcrKeyError }" placeholder="请输入 Secret Key" v-model="ocrKeys['xunfei-apisecret']">
-                <button class="eye-btn" @click="toggleFieldVisibility('xunfei-apisecret')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['xunfei-apisecret'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['xunfei-apisecret']" placeholder="请输入 Secret Key" />
             </div>
             <div class="error-hint" v-if="xunfeiOcrKeyError">{{ xunfeiOcrKeyError }}</div>
           </div>
-          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="btn-save-wrap">
+            <button class="btn-save" @click="saveConfig">保存</button>
+          </div>
           <div class="detail-help">
             <div class="detail-help-title">如何获取：</div>
             <p>前往 <a class="link" @click.prevent="openUrl('https://www.xfyun.cn')">讯飞开放平台</a> 创建 OCR 应用，获取 App Id、API Key 和 Secret Key。</p>
@@ -185,45 +157,36 @@
           <div class="detail-fields">
             <div class="detail-field">
               <label>Secret Id <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['tencent-secretid'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': tencentOcrKeyError }" placeholder="请输入 SecretId" v-model="ocrKeys['tencent-secretid']">
-                <button class="eye-btn" @click="toggleFieldVisibility('tencent-secretid')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['tencent-secretid'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['tencent-secretid']" placeholder="请输入 SecretId" />
             </div>
             <div class="detail-field">
               <label>Secret Key <span class="required">*</span></label>
-              <div class="password-field">
-                <input :type="fieldVisibility['tencent-secretkey'] ? 'text' : 'password'" class="key-input detail-input" :class="{ 'input-error': tencentOcrKeyError }" placeholder="请输入 SecretKey" v-model="ocrKeys['tencent-secretkey']">
-                <button class="eye-btn" @click="toggleFieldVisibility('tencent-secretkey')" type="button">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <use :href="`/icons.svg#icon-eye-${fieldVisibility['tencent-secretkey'] ? 'off' : 'open'}`"></use>
-                  </svg>
-                </button>
-              </div>
+              <PasswordField v-model="ocrKeys['tencent-secretkey']" placeholder="请输入 SecretKey" />
             </div>
             <div class="error-hint" v-if="tencentOcrKeyError">{{ tencentOcrKeyError }}</div>
           </div>
-          <button class="btn-save" @click="saveConfig">保存</button>
+          <div class="btn-save-wrap">
+            <button class="btn-save" @click="saveConfig">保存</button>
+          </div>
           <div class="detail-help">
             <div class="detail-help-title">如何获取：</div>
             <p>前往 <a class="link" @click.prevent="openUrl('https://console.cloud.tencent.com')">腾讯云控制台</a> 的访问管理创建 SecretId 和 SecretKey。</p>
           </div>
         </template>
-      </div>
-    </div>
-  </div>
+      </template>
+    </template>
+  </ServiceConfigLayout>
+</div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import PasswordField from '../../components/PasswordField.vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useSettings } from '../../composables/useSettings.js'
-import { useUtils } from '../../composables/useUtils.js'
+import { filled, useUtils } from '../../composables/useUtils.js'
+import ServiceConfigLayout from '../../components/ServiceConfigLayout.vue'
 
 const { settings, activeOcr, ocrKeys } = useSettings()
 const { showToastOnce, showToast, openUrl } = useUtils()
@@ -285,34 +248,8 @@ watch([() => ocrKeys.value['ollama_ocr_base_url'], () => ocrKeys.value['ollama_o
   }
 })
 
-const fieldVisibility = reactive({})
-
-function toggleFieldVisibility(id) {
-  fieldVisibility[id] = !fieldVisibility[id]
-}
-
-function clearOcrVisibility(key) {
-  if (key === 'xunfei') {
-    fieldVisibility['xunfei-appid'] = false
-    fieldVisibility['xunfei-apikey'] = false
-    fieldVisibility['xunfei-apisecret'] = false
-  } else if (key === 'baidu_ocr') {
-    fieldVisibility['baidu_ocr-apikey'] = false
-    fieldVisibility['baidu_ocr-apisecret'] = false
-  } else if (key === 'tencent') {
-    fieldVisibility['tencent-secretid'] = false
-    fieldVisibility['tencent-secretkey'] = false
-  } else {
-    fieldVisibility[key + '-appid'] = false
-    fieldVisibility[key + '-appkey'] = false
-  }
-}
-
 function toggleOcr(key) {
   selectedKey.value = key
-  if (activeOcr.value && activeOcr.value !== key) {
-    clearOcrVisibility(activeOcr.value)
-  }
   activeOcr.value = activeOcr.value === key ? null : key
 }
 
@@ -438,7 +375,6 @@ onMounted(async () => {
 })
 
 async function saveConfig() {
-  const filled = v => v && v.trim()
   const key = selectedKey.value
 
   if (key === 'baidu_ocr') {
@@ -482,28 +418,10 @@ async function saveConfig() {
 </script>
 
 <style scoped>
-.translator-page {
+.translator-setting {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.translator-layout {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  flex: 1;
-  min-height: 0;
-}
-
-.translator-list {
-  width: 200px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border-strong);
-  background: var(--bg-sidebar);
-  border-radius: 8px 0 0 8px;
-  padding: 8px 0;
 }
 
 .translator-row {
@@ -531,14 +449,6 @@ async function saveConfig() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.translator-detail {
-  flex: 1;
-  padding: 20px 24px;
-  background: var(--bg-card);
-  border-radius: 0 8px 8px 0;
-  overflow-y: auto;
 }
 
 .detail-desc {
@@ -593,8 +503,15 @@ async function saveConfig() {
   padding: 20px 0;
 }
 
-.btn-save {
+.btn-save-wrap {
+  width: 100%;
+  max-width: 360px;
   margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-save {
   padding: 8px 28px;
   background: var(--accent);
   color: var(--text-inverse);

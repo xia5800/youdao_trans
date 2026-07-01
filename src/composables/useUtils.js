@@ -4,6 +4,13 @@ import { useToast } from './useToast.js'
 const lastToastTime = ref(0)
 const lastToastMsg = ref('')
 
+export const filled = v => v && v.trim()
+
+export function copyText(text) {
+  if (!text) return
+  navigator.clipboard.writeText(text).catch(() => {})
+}
+
 export function useUtils() {
   const { showToast } = useToast()
 

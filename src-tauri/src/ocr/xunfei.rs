@@ -1,3 +1,4 @@
+use crate::util;
 use base64::engine::general_purpose;
 use base64::Engine;
 use hmac::{Hmac, Mac};
@@ -112,12 +113,9 @@ fn url_encode(s: &str) -> String {
 }
 
 pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<String, String> {
-    let app_id = keys.get("xunfei-appid").filter(|s| !s.is_empty())
-        .ok_or_else(|| "讯飞OCR AppId 未配置".to_string())?;
-    let api_key = keys.get("xunfei-apikey").filter(|s| !s.is_empty())
-        .ok_or_else(|| "讯飞OCR API Key 未配置".to_string())?;
-    let api_secret = keys.get("xunfei-apisecret").filter(|s| !s.is_empty())
-        .ok_or_else(|| "讯飞OCR Secret Key 未配置".to_string())?;
+    let app_id = util::require_key(keys, "xunfei-appid", "讯飞OCR AppId 未配置")?;
+    let api_key = util::require_key(keys, "xunfei-apikey", "讯飞OCR API Key 未配置")?;
+    let api_secret = util::require_key(keys, "xunfei-apisecret", "讯飞OCR Secret Key 未配置")?;
 
     let date = rfc1123_date()?;
     let signature = build_signature(api_secret, &date)?;
@@ -135,7 +133,7 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
 
     let body = OcrRequest {
         header: OcrHeader {
-            app_id: app_id.clone(),
+            app_id: app_id.to_string(),
             status: 0,
         },
         parameter: OcrParameter {

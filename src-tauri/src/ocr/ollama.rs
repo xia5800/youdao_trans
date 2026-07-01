@@ -1,3 +1,4 @@
+use crate::util;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -10,16 +11,9 @@ struct GenerateRequest {
 }
 
 pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<String, String> {
-    let base_url = keys
-        .get("ollama_ocr_base_url")
-        .filter(|s| !s.is_empty())
-        .map(|s| s.trim_end_matches('/'))
-        .ok_or_else(|| "Ollama OCR 接口地址未配置".to_string())?;
+    let base_url = util::require_key(keys, "ollama_ocr_base_url", "Ollama OCR 接口地址未配置")?.trim_end_matches('/');
 
-    let model = keys
-        .get("ollama_ocr_model")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Ollama OCR 模型名未配置".to_string())?;
+    let model = util::require_key(keys, "ollama_ocr_model", "Ollama OCR 模型名未配置")?;
 
     let body = GenerateRequest {
         model: model.to_string(),

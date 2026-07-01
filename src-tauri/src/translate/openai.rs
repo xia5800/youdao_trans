@@ -1,3 +1,4 @@
+use crate::util;
 use serde::Serialize;
 
 const DEFAULT_MODEL: &str = "gpt-4o-mini";
@@ -21,10 +22,7 @@ pub async fn translate(
     target_lang: &str,
     keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let api_key = keys
-        .get("openai_key")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "OpenAI API Key 未配置".to_string())?;
+    let api_key = util::require_key(keys, "openai_key", "OpenAI API Key 未配置")?;
 
     let model = keys
         .get("openai_model")

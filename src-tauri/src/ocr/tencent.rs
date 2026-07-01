@@ -1,3 +1,4 @@
+use crate::util;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -111,10 +112,8 @@ fn build_signature(secret_id: &str, secret_key: &str, timestamp: u64, body_json:
 }
 
 pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<String, String> {
-    let secret_id = keys.get("tencent-secretid").filter(|s| !s.is_empty())
-        .ok_or_else(|| "腾讯云OCR SecretId 未配置".to_string())?;
-    let secret_key = keys.get("tencent-secretkey").filter(|s| !s.is_empty())
-        .ok_or_else(|| "腾讯云OCR SecretKey 未配置".to_string())?;
+    let secret_id = util::require_key(keys, "tencent-secretid", "腾讯云OCR SecretId 未配置")?;
+    let secret_key = util::require_key(keys, "tencent-secretkey", "腾讯云OCR SecretKey 未配置")?;
 
     let body = TencentRequest {
         query_type: 0,

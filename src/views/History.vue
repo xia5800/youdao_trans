@@ -77,9 +77,9 @@
               </div>
             </div>
             <div class="item-content">
-              <div class="source-text clickable-text" :class="{ preview: !isExpanded(record.id) && needsTruncation(record.source_text) }" @click="copyText(record.source_text)">{{ isExpanded(record.id) ? record.source_text : truncateText(record.source_text) }}</div>
+              <div class="source-text clickable-text" :class="{ preview: !isExpanded(record.id) && needsTruncation(record.source_text) }" @click="copyTextWithToast(record.source_text)">{{ isExpanded(record.id) ? record.source_text : truncateText(record.source_text) }}</div>
               <div class="arrow-icon">→</div>
-              <div class="target-text clickable-text" :class="{ preview: !isExpanded(record.id) && needsTruncation(record.target_text) }" @click="copyText(record.target_text)">{{ isExpanded(record.id) ? record.target_text : truncateText(record.target_text) }}</div>
+              <div class="target-text clickable-text" :class="{ preview: !isExpanded(record.id) && needsTruncation(record.target_text) }" @click="copyTextWithToast(record.target_text)">{{ isExpanded(record.id) ? record.target_text : truncateText(record.target_text) }}</div>
             </div>
             <div v-if="!isExpanded(record.id) && needsTruncation(record.source_text)" class="expand-btn" @click="expandItem(record.id)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -115,6 +115,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { copyText } from '../composables/useUtils.js'
 import { useToast } from '../composables/useToast.js'
 
 const { showToast } = useToast()
@@ -309,10 +310,9 @@ async function deleteRecord(id) {
   }
 }
 
-function copyText(text) {
-  if (!text) return
-  navigator.clipboard.writeText(text)
-  showToast('已复制')
+function copyTextWithToast(text) {
+  copyText(text)
+  if (text) showToast('已复制')
 }
 </script>
 

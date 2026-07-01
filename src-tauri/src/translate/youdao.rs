@@ -1,3 +1,4 @@
+use crate::util;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -35,14 +36,8 @@ pub async fn translate(
     target_lang: &str,
     keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let app_key = keys
-        .get("youdao_appid")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "有道翻译 appId 未配置".to_string())?;
-    let app_secret = keys
-        .get("youdao_appsecret")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "有道翻译 appSecret 未配置".to_string())?;
+    let app_key = util::require_key(keys, "youdao_appid", "有道翻译 appId 未配置")?;
+    let app_secret = util::require_key(keys, "youdao_appsecret", "有道翻译 appSecret 未配置")?;
 
     let from = source_lang.map(map_lang).unwrap_or("auto");
     let to = map_lang(target_lang);

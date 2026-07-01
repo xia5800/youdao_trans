@@ -1,3 +1,4 @@
+use crate::util;
 use md5::{Md5, Digest};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -32,14 +33,8 @@ pub async fn translate(
     target_lang: &str,
     keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let appid = keys
-        .get("baidu_appid")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "百度翻译 appid 未配置".to_string())?;
-    let key = keys
-        .get("baidu_appkey")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "百度翻译 appkey 未配置".to_string())?;
+    let appid = util::require_key(keys, "baidu_appid", "百度翻译 appid 未配置")?;
+    let key = util::require_key(keys, "baidu_appkey", "百度翻译 appkey 未配置")?;
 
     let salt = SystemTime::now()
         .duration_since(UNIX_EPOCH)

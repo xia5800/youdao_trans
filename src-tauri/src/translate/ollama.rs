@@ -1,3 +1,4 @@
+use crate::util;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -13,16 +14,9 @@ pub async fn translate(
     target_lang: &str,
     keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let base_url = keys
-        .get("ollama_base_url")
-        .filter(|s| !s.is_empty())
-        .map(|s| s.trim_end_matches('/'))
-        .ok_or_else(|| "Ollama 接口地址未配置".to_string())?;
+    let base_url = util::require_key(keys, "ollama_base_url", "Ollama 接口地址未配置")?.trim_end_matches('/');
 
-    let model = keys
-        .get("ollama_model")
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Ollama 模型名未配置".to_string())?;
+    let model = util::require_key(keys, "ollama_model", "Ollama 模型名未配置")?;
 
     let source = source_lang.unwrap_or("auto");
     let prompt = format!(
