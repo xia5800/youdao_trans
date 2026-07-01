@@ -14,7 +14,7 @@ use tauri::Emitter;
 
 use crate::constants;
 
-const GITHUB_MIRROR: &str = "https://mirrors-us01.git-zh.com";
+const GITHUB_RAW_MIRROR: &str = "https://cdn.jsdelivr.net/gh";
 
 /// Describes a single file to download.
 pub struct DownloadSpec {
@@ -35,7 +35,14 @@ pub struct DownloadSpec {
 fn build_direct_url(spec: &DownloadSpec, use_github_mirror: bool) -> String {
     let url = spec.direct_url.as_ref().expect("direct_url required");
     if use_github_mirror && url.starts_with("https://raw.githubusercontent.com/") {
-        url.replacen("https://raw.githubusercontent.com", GITHUB_MIRROR, 1)
+        // raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+        // → cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/{path}
+        let path = url.strip_prefix("https://raw.githubusercontent.com/").unwrap();
+        if let Some(at) = path.match_indices('/').nth(1).map(|(i, _)| i) {
+            format!("{}/{}{}", GITHUB_RAW_MIRROR, &path[..at], &path[at..].replacen('/', "@", 1))
+        } else {
+            format!("{}/{}", GITHUB_RAW_MIRROR, path)
+        }
     } else {
         url.clone()
     }
@@ -172,9 +179,15 @@ async fn download_direct_url(
         .map_err(|e| format!("创建目录失败: {}", e))?;
 
     log::info!("移动文件: {} → {}", temp_path.display(), final_path.display());
-    tokio::fs::rename(&temp_path, &final_path)
-        .await
-        .map_err(|e| format!("移动文件失败 ({}): {}", spec.file_name, e))?;
+    if let Err(e) = tokio::fs::rename(&temp_path, &final_path).await {
+        log::warn!("rename 失败 (可能跨驱动器), 回退到 copy+删除: {}", e);
+        tokio::fs::copy(&temp_path, &final_path)
+            .await
+            .map_err(|_| format!("移动文件失败 ({}): 跨驱动器复制失败", spec.file_name))?;
+        tokio::fs::remove_file(&temp_path)
+            .await
+            .ok();
+    }
 
     emit_progress(
         app,

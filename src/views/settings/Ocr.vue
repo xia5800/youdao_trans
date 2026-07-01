@@ -37,7 +37,7 @@
                   <div class="switch" :class="{ active: useGitHubMirror }" @click="useGitHubMirror = !useGitHubMirror">
                     <div class="switch-knob"></div>
                   </div>
-                  <span class="toggle-label">使用加速源（mirrors-us01.git-zh.com）下载字典文件</span>
+                  <span class="toggle-label">使用 CDN 加速（jsDelivr）下载字典文件</span>
                 </div>
               </div>
             </div>
