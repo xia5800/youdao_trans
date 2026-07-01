@@ -240,3 +240,5 @@ npm run tauri build  # 使用 Tauri 内置 NSIS 构建安装包
 ## 📌 其它
 
 字典数据库采用 [ECDICT](https://github.com/skywind3000/ECDICT)（约 207MB），首次使用词典时自动下载，支持暂停/继续/取消及 GitHub 加速镜像。
+
+> 🤖 本项目由多种 AI 协作开发。
