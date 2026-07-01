@@ -6,15 +6,17 @@
 
 ## 功能
 
-- **文本翻译** — 输入文本，在 9 种翻译源之间切换翻译
-- **截图翻译** — 框选屏幕区域，OCR 识别后自动翻译（内置 PaddleOCR 本地引擎）
+- **文本翻译** — 输入文本，在 9 种翻译源之间切换翻译；支持自动翻译模式
+- **截图翻译** — 框选屏幕区域，OCR 识别后自动翻译（支持 PaddleOCR 本地 / 百度云 / 腾讯云 / 讯飞 / Ollama）
 - **划词翻译** — 选中任意文字，快捷键触发弹窗翻译
-- **词典查询** — 离线英汉词典，支持自动补全、词形变化、考试标签
+- **词典查询** — 离线英汉词典（首次使用时在线下载），支持自动补全、词形变化、词频、考试标签
 - **翻译记录** — 历史记录自动保存，支持收藏、搜索、筛选、批量管理
 - **系统托盘** — 后台常驻，托盘菜单快速访问各项功能
 - **全局快捷键** — 自定义快捷键，全局可用
 - **TTS 朗读** — 浏览器原生语音合成 + Edge TTS 云语音，支持多语种、多音色
 - **深色模式** — 跟随系统 / 浅色 / 深色
+- **开机自启** — 开机自动启动
+- **模型自动下载** — PaddleOCR 模型与词典数据库均支持首次运行时在线下载，带进度显示与暂停/继续/取消控制
 
 ## 截图
 
@@ -127,7 +129,7 @@ ollama pull granite3-dense:8b
 
 ### PaddleOCR（本地离线）
 
-内置 PaddleOCR v6 本地识别引擎，无需联网，开箱即用。模型文件位于 `models/ocr/` 目录下：
+内置 PaddleOCR v6 本地识别引擎，无需联网，开箱即用。模型文件位于 `models/ocr/` 目录下，首次使用 PaddleOCR 时自动下载（支持暂停/继续/取消，可选 HuggingFace 镜像）。
 
 | 文件 | 说明 | 下载地址 |
 | --- | --- | --- |
@@ -135,7 +137,7 @@ ollama pull granite3-dense:8b
 | `PP-OCRv6_medium_rec.onnx` | 文字识别模型 | [HuggingFace](https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx) |
 | `ppocrv6_dict.txt` | 字符字典文件 | [GitHub](https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/utils/dict/ppocrv6_dict.txt) |
 
-打包版本已内置模型文件，无需额外下载。如需手动放置，将三个文件放入 `models/ocr/` 目录即可。
+如需手动放置，将三个文件放入 `models/ocr/` 目录即可跳过自动下载。
 
 ### Ollama OCR
 
@@ -189,7 +191,7 @@ ollama pull maternion/Qianfan-OCR
 - **调试模式**：`<项目根>/db/history-dev.db`
 - **发布模式**：`<exe所在目录>/db/history.db`
 
-OCR 模型文件位于程序根目录下的 `models/` 文件夹。
+OCR 模型文件与词典数据库均位于程序根目录下的 `models/` 文件夹，首次使用时在线自动下载。
 
 ## 开发
 
@@ -237,5 +239,4 @@ npm run tauri build  # 使用 Tauri 内置 NSIS 构建安装包
 
 ## 其它
 
-字典数据库地址：
-https://github.com/skywind3000/ECDICT
+字典数据库采用 [ECDICT](https://github.com/skywind3000/ECDICT)（约 207MB），首次使用词典时自动下载，支持暂停/继续/取消及 GitHub 加速镜像。
