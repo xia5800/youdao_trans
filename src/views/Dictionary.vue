@@ -1,6 +1,7 @@
 <template>
   <div class="dictionary-container">
-    <div v-if="!dbReady" class="db-missing-overlay">
+    <div v-if="dbReady === null" class="db-checking-overlay"></div>
+    <div v-else-if="dbReady === false" class="db-missing-overlay">
       <div class="db-missing-card">
         <svg class="db-missing-icon" viewBox="0 0 80 80" fill="none">
           <use href="/icons.svg#icon-db-missing"></use>
@@ -169,7 +170,7 @@ const result = ref(null)
 const loading = ref(false)
 const notFound = ref(false)
 const errorMsg = ref('')
-const dbReady = ref(false)
+const dbReady = ref(null)
 const useGitHubMirror = ref(localStorage.getItem('dictUseGitHubMirror') === 'true')
 const downloading = ref(false)
 const paused = ref(false)
@@ -732,6 +733,7 @@ function pronounce() {
   line-height: 1.4;
 }
 
+.db-checking-overlay,
 .db-missing-overlay {
   position: absolute;
   inset: 0;

@@ -321,7 +321,7 @@ function saveConfig() { saveConfigFn({ settings, showToastOnce, showToast }) }
   max-width: 360px;
   margin-top: 20px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .btn-save {

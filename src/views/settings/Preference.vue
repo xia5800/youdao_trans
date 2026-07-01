@@ -27,7 +27,7 @@
         <div class="setting-label">划词默认前后延迟</div>
         <div class="setting-desc">选中文字后的延迟时间(ms)</div>
       </div>
-      <input type="number" class="number-input" v-model="delayTime" step="50">
+      <NumberInput v-model="delayTime" step="50" />
     </div>
 
     <div class="setting-item">
@@ -64,7 +64,7 @@
         <div class="setting-label">自动翻译延迟</div>
         <div class="setting-desc">输入停止后的延迟时间(ms)</div>
       </div>
-      <input type="number" class="number-input" v-model="autoTranslateDelay" step="50" :disabled="!autoTranslate">
+      <NumberInput v-model="autoTranslateDelay" step="50" :disabled="!autoTranslate" />
     </div>
 
     <div class="setting-item">
@@ -91,6 +91,7 @@
 
 <script setup>
 import { computed, watch } from 'vue'
+import NumberInput from '../../components/NumberInput.vue'
 import SelectInput from '../../components/SelectInput.vue'
 import SwitchToggle from '../../components/SwitchToggle.vue'
 import { useTheme } from '../../composables/useTheme.js'
@@ -119,3 +120,4 @@ const closeOptions = [
 
 watch(themeMode, (val) => { settings.theme = val }, { immediate: true })
 </script>
+
