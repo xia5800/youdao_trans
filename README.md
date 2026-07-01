@@ -18,6 +18,8 @@
 - 🔄 **开机自启** — 开机自动启动
 - 📦 **模型自动下载** — PaddleOCR 模型与词典数据库均支持首次运行时在线下载，带进度显示与暂停/继续/取消控制
 
+> 🤖 本项目由多种 AI 协作开发。
+
 ## 🖼️ 截图
 
 | 翻译页 | 翻译源页 | 词典页 | 翻译记录页 |
@@ -179,6 +181,12 @@ ollama pull maternion/Qianfan-OCR
    - `xunfei-apikey` → API Key
    - `xunfei-apisecret` → API Secret
 
+## 📚 词典数据库
+
+采用 [ECDICT](https://github.com/skywind3000/ECDICT) 离线英汉词典（约 207MB，340 万词条），首次使用词典时自动下载，支持暂停/继续/取消及 GitHub 加速镜像。
+
+如需手动放置，将 `ecdict-sqlite-28.zip` 解压后的 `stardict.db` 放入 `models/dict/` 目录即可跳过自动下载。
+
 ## ⚙️ 配置说明
 
 配置文件位于程序根目录下的 `config/` 文件夹：
@@ -238,7 +246,3 @@ npm run tauri build  # 使用 Tauri 内置 NSIS 构建安装包
 - 🌐 **翻译**：微软免费 / 微软Azure / 谷歌 / 百度 / 阿里 / 有道 / OpenAI / Ollama / DeepLX
 
 ## 📌 其它
-
-字典数据库采用 [ECDICT](https://github.com/skywind3000/ECDICT)（约 207MB），首次使用词典时自动下载，支持暂停/继续/取消及 GitHub 加速镜像。
-
-> 🤖 本项目由多种 AI 协作开发。
