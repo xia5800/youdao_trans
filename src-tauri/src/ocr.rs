@@ -126,6 +126,11 @@ pub async fn finish_ocr_screenshot(
 }
 
 #[tauri::command]
+pub fn unload_ocr_engine() {
+    paddle::unload_engine();
+}
+
+#[tauri::command]
 pub fn check_ocr_models_state() -> std::collections::HashMap<String, bool> {
     paddle::check_model_files()
 }

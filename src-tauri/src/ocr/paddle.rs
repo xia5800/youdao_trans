@@ -120,23 +120,27 @@ fn init_engine() -> Result<OcrEngine, String> {
 }
 
 fn get_engine() -> Result<&'static Mutex<Option<OcrEngine>>, String> {
-    let cell = ENGINE.get_or_init(|| {
-        Mutex::new(Some(match init_engine() {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("PaddleOCR 引擎初始化失败: {}", e);
-                return Mutex::new(None);
-            }
-        }))
-    });
+    let cell = ENGINE.get_or_init(|| Mutex::new(None));
 
-    let guard = cell.lock().map_err(|e| format!("引擎锁异常: {}", e))?;
+    let mut guard = cell.lock().map_err(|e| format!("引擎锁异常: {}", e))?;
     if guard.is_none() {
-        return Err("PaddleOCR 引擎未初始化".to_string());
+        *guard = Some(init_engine().map_err(|e| {
+            log::error!("PaddleOCR 引擎初始化失败: {}", e);
+            format!("PaddleOCR 引擎初始化失败: {}", e)
+        })?);
     }
     drop(guard);
 
     Ok(cell)
+}
+
+pub fn unload_engine() {
+    if let Some(cell) = ENGINE.get() {
+        if let Ok(mut guard) = cell.lock() {
+            log::info!("卸载 PaddleOCR 引擎，释放内存");
+            *guard = None;
+        }
+    }
 }
 
 pub async fn ocr(base64_img: &str, _keys: &HashMap<String, String>) -> Result<String, String> {
@@ -171,6 +175,8 @@ pub async fn ocr(base64_img: &str, _keys: &HashMap<String, String>) -> Result<St
             }
         }
     }
+
+    unload_engine();
 
     if all_texts.is_empty() {
         return Err("未识别到文字".to_string());

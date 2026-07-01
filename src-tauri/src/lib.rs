@@ -243,6 +243,7 @@ pub fn run() {
             ocr::take_pending_ocr,
             ocr::finish_ocr_screenshot,
             ocr::ocr_command,
+            ocr::unload_ocr_engine,
             ocr::check_ocr_models_state,
             ocr::ocr_models_data_dir,
             ocr::download_ocr_models,
