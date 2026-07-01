@@ -1,7 +1,6 @@
 use crate::util;
 use md5::{Md5, Digest};
 use serde::Deserialize;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Deserialize)]
 struct BaiduResponse {
@@ -36,11 +35,7 @@ pub async fn translate(
     let appid = util::require_key(keys, "baidu_appid", "百度翻译 appid 未配置")?;
     let key = util::require_key(keys, "baidu_appkey", "百度翻译 appkey 未配置")?;
 
-    let salt = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("time error: {}", e))?
-        .as_millis()
-        .to_string();
+    let salt = util::unix_millis()?.to_string();
 
     let sign_input = format!("{}{}{}{}", appid, text, salt, key);
     let sign = format!("{:x}", Md5::digest(sign_input.as_bytes()));
@@ -48,7 +43,7 @@ pub async fn translate(
     let from = source_lang.map(map_lang).unwrap_or("auto");
     let to = map_lang(target_lang);
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let params = [
         ("q", text),
         ("from", from),
@@ -65,10 +60,7 @@ pub async fn translate(
         .await
         .map_err(|e| format!("请求百度翻译失败: {}", e))?;
 
-    let body: BaiduResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("解析百度翻译响应失败: {}", e))?;
+    let body: BaiduResponse = util::parse_json(response, "百度翻译").await?;
 
     if let Some(code) = body.error_code {
         let msg = body.error_msg.unwrap_or_default();

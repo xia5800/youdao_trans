@@ -15,7 +15,11 @@
 
     <div class="feature-grid">
       <div class="feature-card" v-for="f in features" :key="f.title">
-        <div class="feature-icon" v-html="f.icon"></div>
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <use :href="`/icons.svg#icon-${f.icon}`"></use>
+          </svg>
+        </div>
         <div class="feature-title">{{ f.title }}</div>
         <div class="feature-desc">{{ f.desc }}</div>
       </div>
@@ -40,36 +44,12 @@
 import { version } from '../../../package.json'
 
 const features = [
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
-    title: '多引擎翻译',
-    desc: '聚合百度、有道、微软、OpenAI 等九大翻译引擎，自由切换'
-  },
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
-    title: '截图 OCR',
-    desc: '支持百度云、讯飞、腾讯云 OCR 及本地 PaddleOCR 模型'
-  },
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>',
-    title: '划词翻译',
-    desc: '鼠标选中即译，悬浮窗展示结果，一键复制朗读'
-  },
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
-    title: '词典查询',
-    desc: '输入即查，展示音标、释义、例句，支持收藏生词'
-  },
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
-    title: '语音朗读',
-    desc: 'TTS 朗读翻译结果，支持语速调节和自动发音'
-  },
-  {
-    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
-    title: '历史记录',
-    desc: '自动保存翻译记录，支持搜索、收藏、批量管理'
-  }
+  { icon: 'layers', title: '多引擎翻译', desc: '聚合百度、有道、微软、OpenAI 等九大翻译引擎，自由切换' },
+  { icon: 'image', title: '截图 OCR', desc: '支持百度云、讯飞、腾讯云 OCR 及本地 PaddleOCR 模型' },
+  { icon: 'search', title: '划词翻译', desc: '鼠标选中即译，悬浮窗展示结果，一键复制朗读' },
+  { icon: 'book', title: '词典查询', desc: '输入即查，展示音标、释义、例句，支持收藏生词' },
+  { icon: 'activity', title: '语音朗读', desc: 'TTS 朗读翻译结果，支持语速调节和自动发音' },
+  { icon: 'clipboard', title: '历史记录', desc: '自动保存翻译记录，支持搜索、收藏、批量管理' }
 ]
 
 const techList = ['Tauri 2', 'Rust', 'Vue 3', 'Vite', 'SQLite']

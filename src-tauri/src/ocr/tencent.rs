@@ -3,7 +3,6 @@ use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -121,14 +120,11 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
     };
     let body_json = serde_json::to_string(&body).map_err(|e| format!("请求序列化失败: {}", e))?;
 
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("时间错误: {}", e))?
-        .as_secs();
+    let timestamp = util::unix_secs()?;
 
     let authorization = build_signature(secret_id, secret_key, timestamp, &body_json)?;
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let resp = client
         .post(format!("https://{}/", HOST))
         .header("Host", HOST)
@@ -156,7 +152,7 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
         return Err(format!("腾讯云OCR错误 ({}): {}", err.code, err.message));
     }
 
-    let items = ocr_resp.response.response.ok_or_else(|| "腾讯云OCR返回结果为空".to_string())?;
+    let items = util::or_empty(ocr_resp.response.response, "腾讯云OCR")?;
 
     let texts: Vec<String> = items
         .iter()

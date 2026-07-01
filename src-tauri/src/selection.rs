@@ -4,6 +4,16 @@ use tauri::{Emitter, Manager, PhysicalPosition};
 
 use crate::window::cursor_position;
 
+fn init_clipboard() -> Result<arboard::Clipboard, String> {
+    match arboard::Clipboard::new() {
+        Ok(c) => Ok(c),
+        Err(e) => {
+            log::error!("初始化剪贴板失败: {}", e);
+            Err(format!("clipboard init: {}", e))
+        }
+    }
+}
+
 // ---- Clipboard logic (original) ----
 
 #[link(name = "user32")]
@@ -45,13 +55,7 @@ fn send_ctrl_c() {
 
 pub fn get_selected_text(delay_ms: u64) -> Result<String, String> {
     for _attempt in 0..constants::SELECTION_RETRY_COUNT {
-        let mut clipboard = match arboard::Clipboard::new() {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!("初始化剪贴板失败: {}", e);
-                return Err(format!("clipboard init: {}", e));
-            }
-        };
+        let mut clipboard = init_clipboard()?;
 
         let original = clipboard.get_text().ok();
         if let Err(e) = clipboard.clear() {
@@ -62,13 +66,7 @@ pub fn get_selected_text(delay_ms: u64) -> Result<String, String> {
         send_wm_copy();
         std::thread::sleep(Duration::from_millis(delay_ms));
 
-        let mut clipboard = match arboard::Clipboard::new() {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!("初始化剪贴板失败: {}", e);
-                return Err(format!("clipboard init: {}", e));
-            }
-        };
+        let mut clipboard = init_clipboard()?;
 
         if let Ok(t) = clipboard.get_text() {
             let trimmed = t.trim().to_string();
@@ -90,13 +88,7 @@ pub fn get_selected_text(delay_ms: u64) -> Result<String, String> {
         send_ctrl_c();
         std::thread::sleep(Duration::from_millis(delay_ms));
 
-        let mut clipboard = match arboard::Clipboard::new() {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!("初始化剪贴板失败: {}", e);
-                return Err(format!("clipboard init: {}", e));
-            }
-        };
+        let mut clipboard = init_clipboard()?;
 
         let text = clipboard.get_text().ok();
         if let Some(orig) = original {

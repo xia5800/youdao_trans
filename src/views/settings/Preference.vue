@@ -19,9 +19,7 @@
         <div class="setting-label">自动启动</div>
         <div class="setting-desc">是否开机自动启动</div>
       </div>
-      <div class="switch" :class="{ active: autoStart }" @click="autoStart = !autoStart">
-        <div class="switch-knob"></div>
-      </div>
+      <SwitchToggle v-model="autoStart" />
     </div>
 
     <div class="setting-item">
@@ -58,9 +56,7 @@
         <div class="setting-label">自动翻译</div>
         <div class="setting-desc">开启后自动翻译输入内容，关闭后需按{{ translateCombo }}翻译</div>
       </div>
-      <div class="switch" :class="{ active: autoTranslate }" @click="autoTranslate = !autoTranslate">
-        <div class="switch-knob"></div>
-      </div>
+      <SwitchToggle v-model="autoTranslate" />
     </div>
 
     <div class="setting-item">
@@ -76,9 +72,7 @@
         <div class="setting-label">截图十字线</div>
         <div class="setting-desc">截图时显示十字准星辅助线</div>
       </div>
-      <div class="switch" :class="{ active: settings.showScreenshotCrosshair }" @click="settings.showScreenshotCrosshair = !settings.showScreenshotCrosshair">
-        <div class="switch-knob"></div>
-      </div>
+      <SwitchToggle v-model="settings.showScreenshotCrosshair" />
     </div>
 
     <div class="subsection-title">关闭行为</div>
@@ -98,6 +92,7 @@
 <script setup>
 import { computed, watch } from 'vue'
 import SelectInput from '../../components/SelectInput.vue'
+import SwitchToggle from '../../components/SwitchToggle.vue'
 import { useTheme } from '../../composables/useTheme.js'
 import { useSettings } from '../../composables/useSettings.js'
 import { useHotkey } from '../../composables/useHotkey.js'

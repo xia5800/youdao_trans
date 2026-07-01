@@ -11,9 +11,7 @@
           @click="selectedKey = o.key"
         >
           <span class="translator-row-name">{{ o.name }}</span>
-          <div class="switch" :class="{ active: activeOcr === o.key }" @click.stop="toggleOcr(o.key)">
-            <div class="switch-knob"></div>
-          </div>
+          <SwitchToggle :modelValue="activeOcr === o.key" @update:modelValue="toggleOcr(o.key)" />
         </div>
     </template>
     <template #detail>
@@ -26,18 +24,14 @@
               <div class="detail-field">
                 <label>HuggingFace 镜像</label>
                 <div class="toggle-row">
-                  <div class="switch" :class="{ active: useHuggingFaceMirror }" @click="useHuggingFaceMirror = !useHuggingFaceMirror">
-                    <div class="switch-knob"></div>
-                  </div>
+                  <SwitchToggle v-model="useHuggingFaceMirror" />
                   <span class="toggle-label">使用镜像站点（hf-mirror.com）下载模型</span>
                 </div>
               </div>
               <div class="detail-field">
                 <label>GitHub 加速</label>
                 <div class="toggle-row">
-                  <div class="switch" :class="{ active: useGitHubMirror }" @click="useGitHubMirror = !useGitHubMirror">
-                    <div class="switch-knob"></div>
-                  </div>
+                  <SwitchToggle v-model="useGitHubMirror" />
                   <span class="toggle-label">使用 CDN 加速（jsDelivr）下载字典文件</span>
                 </div>
               </div>
@@ -180,12 +174,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import PasswordField from '../../components/PasswordField.vue'
+import SwitchToggle from '../../components/SwitchToggle.vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useSettings } from '../../composables/useSettings.js'
-import { filled, useUtils } from '../../composables/useUtils.js'
+import { useUtils } from '../../composables/useUtils.js'
+import { useServiceConfig } from '../../composables/useServiceConfig.js'
 import ServiceConfigLayout from '../../components/ServiceConfigLayout.vue'
 
 const { settings, activeOcr, ocrKeys } = useSettings()
@@ -204,54 +200,26 @@ const ocrList = [
   { key: 'tencent', name: '腾讯云OCR', desc: '通用文字识别Agent(RecognizeAgent)' }
 ]
 
-const selectedKey = ref(activeOcr.value || ocrList[0].key)
-const selectedOcr = computed(() => ocrList.find(o => o.key === selectedKey.value))
-
-const baiduOcrKeyError = ref('')
-const xunfeiOcrKeyError = ref('')
-const tencentOcrKeyError = ref('')
-const ollamaOcrKeyError = ref('')
-
-watch([() => ocrKeys.value['baidu_ocr-apikey'], () => ocrKeys.value['baidu_ocr-apisecret'], activeOcr], ([apikey, apisecret, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'baidu_ocr' && (!filled(apikey) || !filled(apisecret))) {
-    baiduOcrKeyError.value = 'API Key 和 Secret Key 必须同时填写'
-  } else {
-    baiduOcrKeyError.value = ''
-  }
+const { selectedKey, selectedService: selectedOcr, errors, toggleService, saveConfig: saveConfigFn } = useServiceConfig({
+  serviceList: ocrList,
+  activeService: activeOcr,
+  keys: ocrKeys,
+  validators: [
+    { key: 'baidu_ocr', activeKey: 'baidu_ocr', fields: ['baidu_ocr-apikey', 'baidu_ocr-apisecret'], message: 'API Key 和 Secret Key 必须同时填写' },
+    { key: 'xunfei', activeKey: 'xunfei', fields: ['xunfei-appid', 'xunfei-apikey', 'xunfei-apisecret'], message: 'AppId、API Key 和 Secret Key 必须同时填写' },
+    { key: 'tencent', activeKey: 'tencent', fields: ['tencent-secretid', 'tencent-secretkey'], message: 'SecretId 和 SecretKey 必须同时填写' },
+    { key: 'ollama_ocr', activeKey: 'ollama_ocr', fields: ['ollama_ocr_base_url', 'ollama_ocr_model'], message: '接口地址和模型名必须填写' },
+  ],
 })
 
-watch([() => ocrKeys.value['xunfei-appid'], () => ocrKeys.value['xunfei-apikey'], () => ocrKeys.value['xunfei-apisecret'], activeOcr], ([appid, apikey, apisecret, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'xunfei' && (!filled(appid) || !filled(apikey) || !filled(apisecret))) {
-    xunfeiOcrKeyError.value = 'AppId、API Key 和 Secret Key 必须同时填写'
-  } else {
-    xunfeiOcrKeyError.value = ''
-  }
-})
+const baiduOcrKeyError = errors.baidu_ocr
+const xunfeiOcrKeyError = errors.xunfei
+const tencentOcrKeyError = errors.tencent
+const ollamaOcrKeyError = errors.ollama_ocr
 
-watch([() => ocrKeys.value['tencent-secretid'], () => ocrKeys.value['tencent-secretkey'], activeOcr], ([secretid, secretkey, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'tencent' && (!filled(secretid) || !filled(secretkey))) {
-    tencentOcrKeyError.value = 'SecretId 和 SecretKey 必须同时填写'
-  } else {
-    tencentOcrKeyError.value = ''
-  }
-})
+function toggleOcr(key) { toggleService(key) }
 
-watch([() => ocrKeys.value['ollama_ocr_base_url'], () => ocrKeys.value['ollama_ocr_model'], activeOcr], ([url, model, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'ollama_ocr' && (!filled(url) || !filled(model))) {
-    ollamaOcrKeyError.value = '接口地址和模型名必须填写'
-  } else {
-    ollamaOcrKeyError.value = ''
-  }
-})
-
-function toggleOcr(key) {
-  selectedKey.value = key
-  activeOcr.value = activeOcr.value === key ? null : key
-}
+function saveConfig() { saveConfigFn({ settings, showToastOnce, showToast }) }
 
 // Model download state
 const modelStatus = ref(null)
@@ -373,48 +341,6 @@ onMounted(async () => {
   await refreshModelStatus()
   await setupDownloadListeners()
 })
-
-async function saveConfig() {
-  const key = selectedKey.value
-
-  if (key === 'baidu_ocr') {
-    const k = ocrKeys.value['baidu_ocr-apikey']
-    const s = ocrKeys.value['baidu_ocr-apisecret']
-    if (!filled(k) || !filled(s)) {
-      showToastOnce('API Key 和 Secret Key 必须同时填写')
-      return
-    }
-  } else if (key === 'xunfei') {
-    const a = ocrKeys.value['xunfei-appid']
-    const k = ocrKeys.value['xunfei-apikey']
-    const s = ocrKeys.value['xunfei-apisecret']
-    if (!filled(a) || !filled(k) || !filled(s)) {
-      showToastOnce('AppId、API Key 和 Secret Key 必须同时填写')
-      return
-    }
-  } else if (key === 'tencent') {
-    const s = ocrKeys.value['tencent-secretid']
-    const k = ocrKeys.value['tencent-secretkey']
-    if (!filled(s) || !filled(k)) {
-      showToastOnce('SecretId 和 SecretKey 必须同时填写')
-      return
-    }
-  } else if (key === 'ollama_ocr') {
-    const u = ocrKeys.value['ollama_ocr_base_url']
-    const m = ocrKeys.value['ollama_ocr_model']
-    if (!filled(u) || !filled(m)) {
-      showToastOnce('接口地址和模型名必须填写')
-      return
-    }
-  }
-
-  try {
-    await invoke('save_config', { json: JSON.stringify(settings) })
-    showToastOnce('已保存')
-  } catch (e) {
-    showToast(`保存失败: ${e}`)
-  }
-}
 </script>
 
 <style scoped>

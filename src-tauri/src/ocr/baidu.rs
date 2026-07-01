@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 #[derive(Deserialize)]
 struct TokenResponse {
@@ -72,7 +72,7 @@ fn load_cache_from_file() -> Option<TokenEntry> {
     let raw = read_cache_raw()?;
     let content = String::from_utf8(raw).ok()?;
     let file: TokenCacheFile = serde_json::from_str(&content).ok()?;
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    let now = crate::util::unix_secs().ok()?;
     if now >= file.expires_at_unix {
         return None;
     }
@@ -141,10 +141,7 @@ fn set_cached_token(api_key: &str, secret_key: &str, token: String, expires_in: 
     } else {
         expires_in
     };
-    let now_secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let now_secs = crate::util::unix_secs().unwrap_or_default();
     let expires_at_unix = now_secs + safe_ttl;
     let key_hash = compute_key_hash(api_key, secret_key);
 
@@ -182,10 +179,7 @@ async fn obtain_token(
         .await
         .map_err(|e| format!("获取百度OCR token失败: {}", e))?;
 
-    let token_body: TokenResponse = token_resp
-        .json()
-        .await
-        .map_err(|e| format!("解析百度OCR token响应失败: {}", e))?;
+    let token_body: TokenResponse = util::parse_json(token_resp, "百度OCR Token").await?;
 
     let access_token = token_body.access_token.ok_or_else(|| {
         let err = token_body.error.unwrap_or_default();
@@ -214,19 +208,14 @@ async fn call_ocr(
         .await
         .map_err(|e| format!("请求百度OCR失败: {}", e))?;
 
-    let ocr_body: OcrResponse = ocr_resp
-        .json()
-        .await
-        .map_err(|e| format!("解析百度OCR响应失败: {}", e))?;
+    let ocr_body: OcrResponse = util::parse_json(ocr_resp, "百度OCR").await?;
 
     if let Some(code) = ocr_body.error_code {
         let msg = ocr_body.error_msg.unwrap_or_default();
         return Err(format!("百度OCR错误 ({}): {}", code, msg));
     }
 
-    let words = ocr_body
-        .words_result
-        .ok_or_else(|| "百度OCR返回结果为空".to_string())?;
+    let words = util::or_empty(ocr_body.words_result, "百度OCR")?;
 
     let text: Vec<String> = words.into_iter().map(|w| w.words).collect();
     Ok(text.join("\n"))
@@ -236,7 +225,7 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
     let api_key = util::require_key(keys, "baidu_ocr-apikey", "百度云OCR API Key 未配置")?;
     let secret_key = util::require_key(keys, "baidu_ocr-apisecret", "百度云OCR Secret Key 未配置")?;
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
 
     let access_token = match get_cached_token(api_key, secret_key) {
         Some(t) => t,

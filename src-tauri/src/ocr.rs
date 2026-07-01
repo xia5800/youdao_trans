@@ -4,10 +4,10 @@ mod paddle;
 mod tencent;
 mod xunfei;
 
+use crate::make_registry;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::OnceLock;
 use crate::constants;
 use tauri::{Emitter, Manager};
 
@@ -16,18 +16,13 @@ type OcrFn = fn(
     HashMap<String, String>,
 ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
 
-fn registry() -> &'static HashMap<&'static str, OcrFn> {
-    static REG: OnceLock<HashMap<&'static str, OcrFn>> = OnceLock::new();
-    REG.get_or_init(|| {
-        let mut m: HashMap<&'static str, OcrFn> = HashMap::new();
-        m.insert("baidu_ocr", |img, keys| Box::pin(async move { baidu::ocr(&img, &keys).await }));
-        m.insert("tencent", |img, keys| Box::pin(async move { tencent::ocr(&img, &keys).await }));
-        m.insert("xunfei", |img, keys| Box::pin(async move { xunfei::ocr(&img, &keys).await }));
-        m.insert("ollama_ocr", |img, keys| Box::pin(async move { ollama::ocr(&img, &keys).await }));
-        m.insert("paddle_ocr", |img, keys| Box::pin(async move { paddle::ocr(&img, &keys).await }));
-        m
-    })
-}
+make_registry!(OcrFn, registry, [
+    ("baidu_ocr", |img: String, keys: HashMap<String, String>| Box::pin(async move { baidu::ocr(&img, &keys).await })),
+    ("tencent", |img: String, keys: HashMap<String, String>| Box::pin(async move { tencent::ocr(&img, &keys).await })),
+    ("xunfei", |img: String, keys: HashMap<String, String>| Box::pin(async move { xunfei::ocr(&img, &keys).await })),
+    ("ollama_ocr", |img: String, keys: HashMap<String, String>| Box::pin(async move { ollama::ocr(&img, &keys).await })),
+    ("paddle_ocr", |img: String, keys: HashMap<String, String>| Box::pin(async move { paddle::ocr(&img, &keys).await })),
+]);
 
 pub async fn run(
     provider: &str,

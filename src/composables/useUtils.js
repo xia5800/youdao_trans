@@ -1,10 +1,20 @@
 import { ref } from 'vue'
 import { useToast } from './useToast.js'
+import { invoke } from '@tauri-apps/api/core'
 
 const lastToastTime = ref(0)
 const lastToastMsg = ref('')
 
 export const filled = v => v && v.trim()
+
+export async function safeInvoke(command, args = {}) {
+  try {
+    return await invoke(command, args)
+  } catch (e) {
+    console.warn(`invoke ${command} failed:`, e)
+    throw e
+  }
+}
 
 export function copyText(text) {
   if (!text) return

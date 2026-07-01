@@ -22,7 +22,7 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
         stream: false,
     };
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let resp = client
         .post(format!("{}/api/generate", base_url))
         .json(&body)
@@ -30,19 +30,16 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
         .await
         .map_err(|e| format!("Ollama OCR 请求失败: {}", e))?;
 
-    let status = resp.status();
-    let resp_body: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("解析 Ollama OCR 响应失败: {}", e))?;
+    util::check_status(resp.status(), "Ollama OCR")?;
 
-    if !status.is_success() {
-        let msg = resp_body["error"].as_str().unwrap_or("未知错误");
-        return Err(format!("Ollama OCR 错误 ({}): {}", status, msg));
+    let resp_body: serde_json::Value = util::parse_json(resp, "Ollama OCR").await?;
+
+    if let Some(msg) = resp_body["error"].as_str() {
+        return Err(format!("Ollama OCR 错误: {}", msg));
     }
 
-    resp_body["response"]
-        .as_str()
-        .map(|s| s.trim().to_string())
-        .ok_or_else(|| "Ollama OCR 返回结果为空".to_string())
+    util::or_empty(
+        resp_body["response"].as_str().map(|s| s.trim().to_string()),
+        "Ollama OCR",
+    )
 }

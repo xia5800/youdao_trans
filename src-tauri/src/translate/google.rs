@@ -1,3 +1,5 @@
+use crate::util;
+
 const ENDPOINT: &str = "https://translate.googleapis.com/translate_a/single";
 
 pub async fn translate(
@@ -6,7 +8,7 @@ pub async fn translate(
     target_lang: &str,
     _keys: &std::collections::HashMap<String, String>,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = util::http_client();
 
     let sl = source_lang.unwrap_or("auto");
 
@@ -23,16 +25,8 @@ pub async fn translate(
         .await
         .map_err(|e| format!("Google translate request failed: {}", e))?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        return Err(format!("Google translation failed (HTTP {}): {}", status, body));
-    }
-
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("failed to parse response: {}", e))?;
+    util::check_status(response.status(), "Google翻译")?;
+    let body: serde_json::Value = util::parse_json(response, "Google翻译").await?;
 
     let segments = body[0]
         .as_array()

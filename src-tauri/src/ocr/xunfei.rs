@@ -158,7 +158,7 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
 
     let body_json = serde_json::to_string(&body).map_err(|e| format!("请求序列化失败: {}", e))?;
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let resp = client.post(&url)
         .header("Content-Type", "application/json")
         .body(body_json)
@@ -180,8 +180,10 @@ pub async fn ocr(base64_img: &str, keys: &HashMap<String, String>) -> Result<Str
         return Err(format!("讯飞OCR错误 ({}): {}", ocr_resp.header.code, ocr_resp.header.message));
     }
 
-    let text_b64 = ocr_resp.payload.and_then(|p| p.result).and_then(|r| r.text)
-        .ok_or_else(|| "讯飞OCR返回结果为空".to_string())?;
+    let text_b64 = util::or_empty(
+        ocr_resp.payload.and_then(|p| p.result).and_then(|r| r.text),
+        "讯飞OCR",
+    )?;
 
     let text_json_str = String::from_utf8(
         general_purpose::STANDARD.decode(&text_b64)

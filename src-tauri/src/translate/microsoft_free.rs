@@ -1,26 +1,10 @@
-use serde::{Deserialize, Serialize};
+use super::microsoft_common::{RequestItem, ResponseItem, USER_AGENT};
+use crate::util;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-#[derive(Serialize)]
-struct RequestItem {
-    #[serde(rename = "Text")]
-    text: String,
-}
-
-#[derive(Deserialize)]
-struct ResponseItem {
-    translations: Vec<TranslationItem>,
-}
-
-#[derive(Deserialize)]
-struct TranslationItem {
-    text: String,
-}
-
 const TOKEN_URL: &str = "https://edge.microsoft.com/translate/auth";
 const ENDPOINT: &str = "https://api-edge.cognitive.microsofttranslator.com/translate";
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 static TOKEN_CACHE: Mutex<Option<(String, Instant)>> = Mutex::new(None);
 
@@ -34,7 +18,7 @@ async fn get_free_token() -> Result<String, String> {
         }
     }
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let response = client
         .get(TOKEN_URL)
         .header("User-Agent", USER_AGENT)
@@ -42,9 +26,7 @@ async fn get_free_token() -> Result<String, String> {
         .await
         .map_err(|e| format!("failed to get auth token: {}", e))?;
 
-    if !response.status().is_success() {
-        return Err(format!("auth token request failed (HTTP {})", response.status()));
-    }
+    util::check_status(response.status(), "Microsoft翻译Token")?;
 
     let token = response.text().await.map_err(|e| format!("failed to read auth response: {}", e))?;
 
@@ -92,10 +74,7 @@ pub async fn translate(
         return Err(format!("Microsoft translation failed (HTTP {}): {}", status, body));
     }
 
-    let results: Vec<ResponseItem> = response
-        .json()
-        .await
-        .map_err(|e| format!("failed to parse response: {}", e))?;
+    let results: Vec<ResponseItem> = crate::util::parse_json(response, "Microsoft翻译(免费)").await?;
 
     results
         .first()

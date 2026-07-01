@@ -1,4 +1,5 @@
 pub mod microsoft;
+pub mod microsoft_common;
 pub mod microsoft_free;
 pub mod baidu;
 pub mod aliyun;
@@ -12,7 +13,20 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::OnceLock;
+
+#[macro_export]
+macro_rules! make_registry {
+    ($fn_type:ty, $reg_name:ident, [$(($key:expr, $provider:expr)),* $(,)?]) => {
+        fn $reg_name() -> &'static std::collections::HashMap<&'static str, $fn_type> {
+            static REG: std::sync::OnceLock<std::collections::HashMap<&'static str, $fn_type>> = std::sync::OnceLock::new();
+            REG.get_or_init(|| {
+                let mut m = std::collections::HashMap::<&'static str, $fn_type>::new();
+                $( m.insert($key, $provider); )*
+                m
+            })
+        }
+    };
+}
 
 #[derive(Deserialize)]
 pub struct TranslateArgs {
@@ -30,22 +44,17 @@ type TranslateFn = fn(
     HashMap<String, String>,
 ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
 
-fn registry() -> &'static HashMap<&'static str, TranslateFn> {
-    static REG: OnceLock<HashMap<&'static str, TranslateFn>> = OnceLock::new();
-    REG.get_or_init(|| {
-        let mut m: HashMap<&'static str, TranslateFn> = HashMap::new();
-        m.insert("microsoft", |t, s, tl, k| Box::pin(async move { microsoft::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("microsoft_free", |t, s, tl, k| Box::pin(async move { microsoft_free::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("baidu", |t, s, tl, k| Box::pin(async move { baidu::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("ali", |t, s, tl, k| Box::pin(async move { aliyun::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("youdao", |t, s, tl, k| Box::pin(async move { youdao::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("google", |t, s, tl, k| Box::pin(async move { google::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("openai", |t, s, tl, k| Box::pin(async move { openai::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("ollama", |t, s, tl, k| Box::pin(async move { ollama::translate(&t, s.as_deref(), &tl, &k).await }));
-        m.insert("deeplx", |t, s, tl, k| Box::pin(async move { deeplx::translate(&t, s.as_deref(), &tl, &k).await }));
-        m
-    })
-}
+make_registry!(TranslateFn, registry, [
+    ("microsoft", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { microsoft::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("microsoft_free", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { microsoft_free::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("baidu", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { baidu::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("ali", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { aliyun::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("youdao", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { youdao::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("google", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { google::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("openai", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { openai::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("ollama", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { ollama::translate(&t, s.as_deref(), &tl, &k).await })),
+    ("deeplx", |t: String, s: Option<String>, tl: String, k: HashMap<String, String>| Box::pin(async move { deeplx::translate(&t, s.as_deref(), &tl, &k).await })),
+]);
 
 pub async fn run(args: TranslateArgs) -> Result<String, String> {
     let name = args.active_translator.unwrap_or_else(|| "microsoft".to_string());

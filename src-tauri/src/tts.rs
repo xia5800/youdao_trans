@@ -1,9 +1,8 @@
 mod edge;
 
-use std::collections::HashMap;
+use crate::make_registry;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::OnceLock;
 
 use tauri::command;
 
@@ -13,14 +12,9 @@ type TtsFn = fn(
     f32,
 ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, String>> + Send>>;
 
-fn registry() -> &'static HashMap<&'static str, TtsFn> {
-    static REG: OnceLock<HashMap<&'static str, TtsFn>> = OnceLock::new();
-    REG.get_or_init(|| {
-        let mut m: HashMap<&'static str, TtsFn> = HashMap::new();
-        m.insert("edge", |text, voice, speed| Box::pin(async move { edge::speak(&text, &voice, speed).await }));
-        m
-    })
-}
+make_registry!(TtsFn, registry, [
+    ("edge", |text: String, voice: String, speed: f32| Box::pin(async move { edge::speak(&text, &voice, speed).await })),
+]);
 
 #[derive(serde::Serialize, Clone)]
 pub struct VoiceInfo {

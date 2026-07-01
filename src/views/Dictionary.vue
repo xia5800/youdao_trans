@@ -9,9 +9,7 @@
         <div class="db-missing-desc">首次使用需要下载离线字典数据库（约 207MB），下载后即可离线查词。</div>
 
         <div class="mirror-toggle">
-          <div class="switch" :class="{ active: useGitHubMirror }" @click="useGitHubMirror = !useGitHubMirror">
-            <div class="switch-knob"></div>
-          </div>
+          <SwitchToggle v-model="useGitHubMirror" />
           <span class="toggle-label">使用 GitHub 加速（gh-proxy.com）下载</span>
         </div>
 
@@ -30,22 +28,9 @@
               <div class="download-speed-row">
                 <span class="download-speed">{{ downloadSpeed }}</span>
                 <div class="download-actions">
-                  <button v-if="!paused" class="btn-icon" title="暂停" @click="pauseDownload">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                      <rect x="6" y="4" width="4" height="16" rx="1"/>
-                      <rect x="14" y="4" width="4" height="16" rx="1"/>
-                    </svg>
-                  </button>
-                  <button v-else class="btn-icon" title="继续" @click="resumeDownload">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  </button>
-                  <button class="btn-icon btn-icon-danger" title="取消" @click="cancelDownload">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </button>
+                  <ToolIcon v-if="!paused" icon="pause" tooltip="暂停" @click="pauseDownload" />
+                  <ToolIcon v-else icon="play" tooltip="继续" @click="resumeDownload" />
+                  <ToolIcon icon="close" tooltip="取消" @click="cancelDownload" />
                 </div>
               </div>
             </div>
@@ -171,7 +156,11 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import SwitchToggle from '../components/SwitchToggle.vue'
+import ToolIcon from '../components/ToolIcon.vue'
 import { useTts } from '../composables/useTts.js'
+
+const { speak: ttsSpeak } = useTts()
 
 const searchWord = ref('')
 const suggestions = ref([])
@@ -410,8 +399,7 @@ function tagLabel(t) {
 }
 
 function pronounce() {
-  const { speak } = useTts()
-  if (result.value?.word) speak(result.value.word, 'en')
+  if (result.value?.word) ttsSpeak(result.value.word, 'en')
 }
 </script>
 
@@ -789,37 +777,6 @@ function pronounce() {
   gap: 10px;
 }
 
-.mirror-toggle .switch {
-  width: 40px;
-  height: 22px;
-  background-color: var(--bg-switch-off);
-  border-radius: 22px;
-  position: relative;
-  cursor: default;
-  transition: 0.2s;
-  flex-shrink: 0;
-}
-
-.mirror-toggle .switch.active {
-  background-color: var(--accent);
-}
-
-.mirror-toggle .switch-knob {
-  width: 18px;
-  height: 18px;
-  background-color: var(--text-inverse);
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.mirror-toggle .switch.active .switch-knob {
-  left: 20px;
-}
-
 .toggle-label {
   font-size: 12px;
   color: var(--text-secondary);
@@ -927,30 +884,6 @@ function pronounce() {
 .download-actions {
   display: flex;
   gap: 6px;
-}
-
-.btn-icon {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  cursor: default;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.15s;
-}
-
-.btn-icon:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.btn-icon-danger:hover {
-  color: #e74c3c;
-  border-color: #e74c3c;
 }
 
 .progress-bar-bg {

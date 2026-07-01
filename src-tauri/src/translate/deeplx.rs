@@ -1,3 +1,4 @@
+use crate::util;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_ENDPOINT: &str = "http://localhost:1188";
@@ -53,7 +54,7 @@ pub async fn translate(
         target_lang: target,
     };
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let resp = client
         .post(endpoint)
         .json(&body)
@@ -61,18 +62,9 @@ pub async fn translate(
         .await
         .map_err(|e| format!("DeepLX 请求失败: {}", e))?;
 
-    let status = resp.status();
-    if !status.is_success() {
-        let body_text = resp.text().await.unwrap_or_default();
-        return Err(format!("DeepLX 请求失败 (HTTP {}): {}", status, body_text));
-    }
+    util::check_status(resp.status(), "DeepLX")?;
 
-    let result: ResponseBody = resp
-        .json()
-        .await
-        .map_err(|e| format!("解析 DeepLX 响应失败: {}", e))?;
+    let result: ResponseBody = util::parse_json(resp, "DeepLX").await?;
 
-    result
-        .data
-        .ok_or_else(|| "DeepLX 返回结果为空".to_string())
+    util::or_empty(result.data, "DeepLX")
 }

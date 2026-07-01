@@ -11,9 +11,7 @@
           @click="selectedKey = t.key"
         >
           <span class="translator-row-name">{{ t.name }}</span>
-          <div class="switch" :class="{ active: activeTranslator === t.key }" @click.stop="toggleTranslator(t.key)">
-            <div class="switch-knob"></div>
-          </div>
+          <SwitchToggle :modelValue="activeTranslator === t.key" @update:modelValue="toggleTranslator(t.key)" />
         </div>
     </template>
     <template #detail>
@@ -178,15 +176,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
 import PasswordField from '../../components/PasswordField.vue'
-import { invoke } from '@tauri-apps/api/core'
-import { useSettings } from '../../composables/useSettings.js'
-import { filled, useUtils } from '../../composables/useUtils.js'
+import SwitchToggle from '../../components/SwitchToggle.vue'
 import ServiceConfigLayout from '../../components/ServiceConfigLayout.vue'
+import { useSettings } from '../../composables/useSettings.js'
+import { useUtils } from '../../composables/useUtils.js'
+import { useServiceConfig } from '../../composables/useServiceConfig.js'
 
 const { settings, activeTranslator, translatorKeys } = useSettings()
-const { showToastOnce, openUrl } = useUtils()
+const { showToastOnce, showToast, openUrl } = useUtils()
 
 const translatorList = [
   { key: 'microsoft_free', name: '微软翻译（免费）', desc: 'Edge 接口，无需密钥，国内需代理' },
@@ -200,128 +198,36 @@ const translatorList = [
   { key: 'youdao', name: '有道翻译', desc: '有道智云翻译，老牌翻译服务' },
 ]
 
-const selectedKey = ref(activeTranslator.value || translatorList[0].key)
-const selectedTranslator = computed(() => translatorList.find(t => t.key === selectedKey.value))
-
-const microsoftKeyError = ref('')
-const baiduKeyError = ref('')
-const youdaoKeyError = ref('')
-const openaiKeyError = ref('')
-const ollamaKeyError = ref('')
-const deeplxKeyError = ref('')
-
-watch([() => translatorKeys.value['microsoft'], () => translatorKeys.value['microsoft_region']], ([key, region]) => {
-  const filled = k => k && k.trim()
-  if ((filled(key) && !filled(region)) || (!filled(key) && filled(region))) {
-    microsoftKeyError.value = '密钥 Key 和区域 Region 必须同时填写'
-  } else {
-    microsoftKeyError.value = ''
-  }
+const { selectedKey, selectedService: selectedTranslator, errors, toggleService, saveConfig: saveConfigFn } = useServiceConfig({
+  serviceList: translatorList,
+  activeService: activeTranslator,
+  keys: translatorKeys,
+  validators: [
+    { key: 'microsoft', activeKey: 'microsoft', fields: ['microsoft', 'microsoft_region'],
+      message: '密钥 Key 和区域 Region 必须同时填写',
+      saveCheck: (k) => { const a = k['microsoft'], b = k['microsoft_region']; return (!a || !a.trim()) == (!b || !b.trim()) } },
+    { key: 'baidu', activeKey: 'baidu', fields: ['baidu_appid', 'baidu_appkey'],
+      message: 'APP ID 和 APP Key 必须同时填写',
+      saveCheck: (k) => { const a = k['baidu_appid'], b = k['baidu_appkey']; return (!a || !a.trim()) == (!b || !b.trim()) } },
+    { key: 'youdao', activeKey: 'youdao', fields: ['youdao_appid', 'youdao_appsecret'],
+      message: '应用 ID 和应用密钥必须同时填写',
+      saveCheck: (k) => { const a = k['youdao_appid'], b = k['youdao_appsecret']; return (!a || !a.trim()) == (!b || !b.trim()) } },
+    { key: 'openai', activeKey: 'openai', fields: ['openai_key', 'openai_model'], message: 'API Key 和模型名必须填写' },
+    { key: 'ollama', activeKey: 'ollama', fields: ['ollama_base_url', 'ollama_model'], message: '接口地址和模型名必须填写' },
+    { key: 'deeplx', activeKey: 'deeplx', fields: ['deeplx_endpoint'], message: '接口地址必须填写' },
+  ],
 })
 
-watch([() => translatorKeys.value['baidu_appid'], () => translatorKeys.value['baidu_appkey']], ([appid, appkey]) => {
-  const filled = k => k && k.trim()
-  if ((filled(appid) && !filled(appkey)) || (!filled(appid) && filled(appkey))) {
-    baiduKeyError.value = 'APP ID 和 APP Key 必须同时填写'
-  } else {
-    baiduKeyError.value = ''
-  }
-})
+const microsoftKeyError = errors.microsoft
+const baiduKeyError = errors.baidu
+const youdaoKeyError = errors.youdao
+const openaiKeyError = errors.openai
+const ollamaKeyError = errors.ollama
+const deeplxKeyError = errors.deeplx
 
-watch([() => translatorKeys.value['youdao_appid'], () => translatorKeys.value['youdao_appsecret']], ([appid, appsecret]) => {
-  const filled = k => k && k.trim()
-  if ((filled(appid) && !filled(appsecret)) || (!filled(appid) && filled(appsecret))) {
-    youdaoKeyError.value = '应用ID和应用密钥必须同时填写'
-  } else {
-    youdaoKeyError.value = ''
-  }
-})
+function toggleTranslator(key) { toggleService(key) }
 
-watch([() => translatorKeys.value['openai_key'], () => translatorKeys.value['openai_model'], activeTranslator], ([key, model, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'openai' && (!filled(key) || !filled(model))) {
-    openaiKeyError.value = 'API Key 和模型名必须填写'
-  } else {
-    openaiKeyError.value = ''
-  }
-})
-
-watch([() => translatorKeys.value['ollama_base_url'], () => translatorKeys.value['ollama_model'], activeTranslator], ([url, model, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'ollama' && (!filled(url) || !filled(model))) {
-    ollamaKeyError.value = '接口地址和模型名必须填写'
-  } else {
-    ollamaKeyError.value = ''
-  }
-})
-
-watch([() => translatorKeys.value['deeplx_endpoint'], activeTranslator], ([endpoint, active]) => {
-  const filled = k => k && k.trim()
-  if (active === 'deeplx' && !filled(endpoint)) {
-    deeplxKeyError.value = '接口地址必须填写'
-  } else {
-    deeplxKeyError.value = ''
-  }
-})
-
-function toggleTranslator(key) {
-  selectedKey.value = key
-  activeTranslator.value = activeTranslator.value === key ? null : key
-}
-
-async function saveConfig() {
-  const key = selectedKey.value
-
-  if (key === 'microsoft') {
-    const k = translatorKeys.value['microsoft']
-    const r = translatorKeys.value['microsoft_region']
-    if ((filled(k) && !filled(r)) || (!filled(k) && filled(r))) {
-      showToastOnce('密钥 Key 和区域 Region 必须同时填写')
-      return
-    }
-  } else if (key === 'baidu') {
-    const a = translatorKeys.value['baidu_appid']
-    const k = translatorKeys.value['baidu_appkey']
-    if ((filled(a) && !filled(k)) || (!filled(a) && filled(k))) {
-      showToastOnce('APP ID 和 APP Key 必须同时填写')
-      return
-    }
-  } else if (key === 'youdao') {
-    const a = translatorKeys.value['youdao_appid']
-    const s = translatorKeys.value['youdao_appsecret']
-    if ((filled(a) && !filled(s)) || (!filled(a) && filled(s))) {
-      showToastOnce('应用 ID 和应用密钥必须同时填写')
-      return
-    }
-  } else if (key === 'openai') {
-    const k = translatorKeys.value['openai_key']
-    const m = translatorKeys.value['openai_model']
-    if (!filled(k) || !filled(m)) {
-      showToastOnce('API Key 和模型名必须填写')
-      return
-    }
-  } else if (key === 'ollama') {
-    const u = translatorKeys.value['ollama_base_url']
-    const m = translatorKeys.value['ollama_model']
-    if (!filled(u) || !filled(m)) {
-      showToastOnce('接口地址和模型名必须填写')
-      return
-    }
-  } else if (key === 'deeplx') {
-    const e = translatorKeys.value['deeplx_endpoint']
-    if (!filled(e)) {
-      showToastOnce('接口地址必须填写')
-      return
-    }
-  }
-
-  try {
-    await invoke('save_config', { json: JSON.stringify(settings) })
-    showToastOnce('已保存')
-  } catch (e) {
-    showToast(`保存失败: ${e}`)
-  }
-}
+function saveConfig() { saveConfigFn({ settings, showToastOnce, showToast }) }
 </script>
 
 <style scoped>

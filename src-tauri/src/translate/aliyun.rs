@@ -4,8 +4,6 @@ use base64::Engine;
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 type HmacSha1 = Hmac<Sha1>;
 
 const ENDPOINT: &str = "https://mt.aliyuncs.com/";
@@ -19,14 +17,8 @@ pub async fn translate(
     let access_key = util::require_key(keys, "ali-accesskey", "阿里翻译 AccessKey 未配置")?;
     let secret_key = util::require_key(keys, "ali-secretkey", "阿里翻译 SecretKey 未配置")?;
 
-    let now = SystemTime::now();
-    let nonce = format!(
-        "{}",
-        now.duration_since(UNIX_EPOCH)
-            .map_err(|e| format!("时间错误: {}", e))?
-            .as_nanos()
-    );
-    let ts = utc_timestamp(&now)?;
+    let nonce = format!("{}", util::unix_millis()?);
+    let ts = utc_timestamp()?;
 
     let mut params = vec![
         ("AccessKeyId", access_key),
@@ -63,7 +55,7 @@ pub async fn translate(
 
     params.push(("Signature", signature.as_str()));
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
 
     let response = client
         .post(ENDPOINT)
@@ -72,10 +64,7 @@ pub async fn translate(
         .await
         .map_err(|e| format!("请求阿里翻译失败: {}", e))?;
 
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("解析阿里翻译响应失败: {}", e))?;
+    let body: serde_json::Value = util::parse_json(response, "阿里翻译").await?;
 
     let code = body["Code"]
         .as_str()
@@ -90,13 +79,15 @@ pub async fn translate(
         return Err(format!("阿里翻译错误 ({}): {}", code, msg));
     }
 
-    body["Data"]["Translated"]
-        .as_str()
-        .or_else(|| body["data"]["translated"].as_str())
-        .or_else(|| body["Data"]["translated"].as_str())
-        .or_else(|| body["data"]["Translated"].as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| "阿里翻译返回结果为空".to_string())
+    util::or_empty(
+        body["Data"]["Translated"]
+            .as_str()
+            .or_else(|| body["data"]["translated"].as_str())
+            .or_else(|| body["Data"]["translated"].as_str())
+            .or_else(|| body["data"]["Translated"].as_str())
+            .map(|s| s.to_string()),
+        "阿里翻译",
+    )
 }
 
 fn percent_encode(s: &str) -> String {
@@ -113,11 +104,8 @@ fn percent_encode(s: &str) -> String {
     result
 }
 
-fn utc_timestamp(now: &SystemTime) -> Result<String, String> {
-    let secs = now
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("时间错误: {}", e))?
-        .as_secs() as i64;
+fn utc_timestamp() -> Result<String, String> {
+    let secs = util::unix_secs()? as i64;
     let dt = time::OffsetDateTime::from_unix_timestamp(secs)
         .map_err(|e| format!("时间转换错误: {}", e))?;
     #[allow(deprecated)]

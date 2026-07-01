@@ -1,24 +1,7 @@
 use crate::util;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize)]
-struct RequestItem {
-    #[serde(rename = "Text")]
-    text: String,
-}
-
-#[derive(Deserialize)]
-struct ResponseItem {
-    translations: Vec<TranslationItem>,
-}
-
-#[derive(Deserialize)]
-struct TranslationItem {
-    text: String,
-}
+use super::microsoft_common::{RequestItem, ResponseItem, USER_AGENT};
 
 const ENDPOINT: &str = "https://api.cognitive.microsofttranslator.com/translate";
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 pub async fn translate(
     text: &str,
@@ -61,10 +44,7 @@ pub async fn translate(
         return Err(format!("Microsoft translation failed (HTTP {}): {}", status, body));
     }
 
-    let results: Vec<ResponseItem> = response
-        .json()
-        .await
-        .map_err(|e| format!("failed to parse response: {}", e))?;
+    let results: Vec<ResponseItem> = util::parse_json(response, "Microsoft翻译").await?;
 
     results
         .first()

@@ -50,7 +50,7 @@ pub async fn translate(
         ],
     };
 
-    let client = reqwest::Client::new();
+    let client = util::http_client();
     let resp = client
         .post(endpoint)
         .header("Authorization", format!("Bearer {}", api_key))
@@ -60,19 +60,14 @@ pub async fn translate(
         .await
         .map_err(|e| format!("OpenAI 请求失败: {}", e))?;
 
-    let status = resp.status();
-    let resp_body: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("解析 OpenAI 响应失败: {}", e))?;
+    util::check_status(resp.status(), "OpenAI")?;
 
-    if !status.is_success() {
-        let msg = resp_body["error"]["message"].as_str().unwrap_or("未知错误");
-        return Err(format!("OpenAI 错误 ({}): {}", status, msg));
-    }
+    let resp_body: serde_json::Value = util::parse_json(resp, "OpenAI").await?;
 
-    resp_body["choices"][0]["message"]["content"]
-        .as_str()
-        .map(|s| s.trim().to_string())
-        .ok_or_else(|| "OpenAI 返回结果为空".to_string())
+    util::or_empty(
+        resp_body["choices"][0]["message"]["content"]
+            .as_str()
+            .map(|s| s.trim().to_string()),
+        "OpenAI",
+    )
 }

@@ -44,21 +44,9 @@
           <div class="pane-header">
             <span class="pane-badge">{{ sourceLabel }}</span>
             <div class="tool-icons">
-              <div class="tool-icon" v-if="sourceText" @click="clearText" data-tooltip="清空">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </div>
-              <div class="tool-icon" @click="copyText(sourceText)" data-tooltip="复制">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use href="/icons.svg#icon-copy"></use>
-                </svg>
-              </div>
-              <div class="tool-icon" :class="{ speaking: speaking === 'source' }" @click="speak(sourceText, sourceLang, 'source')" data-tooltip="朗读">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use href="/icons.svg#icon-speaker"></use>
-                </svg>
-              </div>
+              <ToolIcon v-if="sourceText" icon="close" tooltip="清空" @click="clearText" />
+              <ToolIcon icon="copy" tooltip="复制" @click="copyText(sourceText)" />
+              <ToolIcon icon="speaker" tooltip="朗读" :speaking="speaking === 'source'" @click="speak(sourceText, sourceLang, 'source')" />
             </div>
           </div>
           <div
@@ -75,16 +63,8 @@
           <div class="pane-header">
             <span class="pane-badge">{{ targetLabel }}</span>
             <div class="tool-icons">
-              <div class="tool-icon" @click="copyText(targetText)" data-tooltip="复制">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use href="/icons.svg#icon-copy"></use>
-                </svg>
-              </div>
-              <div class="tool-icon" :class="{ speaking: speaking === 'target' }" @click="speak(targetText, targetLang, 'target')" data-tooltip="朗读">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <use href="/icons.svg#icon-speaker"></use>
-                </svg>
-              </div>
+              <ToolIcon icon="copy" tooltip="复制" @click="copyText(targetText)" />
+              <ToolIcon icon="speaker" tooltip="朗读" :speaking="speaking === 'target'" @click="speak(targetText, targetLang, 'target')" />
             </div>
           </div>
           <div class="input-content output-content" v-html="targetDisplay"></div>
@@ -104,6 +84,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import ToolIcon from '../components/ToolIcon.vue'
 import { useTts } from '../composables/useTts.js'
 import { useSettings } from '../composables/useSettings.js'
 import { useToast } from '../composables/useToast.js'
@@ -149,6 +130,7 @@ watch(isOcrProcessing, (val) => {
 })
 
 const translateCombo = computed(() => hotkeys.value.find(h => h.id === 'translate')?.combo || 'Ctrl+Enter')
+const { speak: ttsSpeak, stop: ttsStop } = useTts()
 const speaking = ref(null)
 
 const isAuto = computed(() => sourceLang.value === 'auto')
@@ -359,15 +341,14 @@ function onPaste(e) {
 }
 
 function speak(text, lang, pane) {
-  const { speak: tts, stop } = useTts()
   if (speaking.value === pane) {
-    stop()
+    ttsStop()
     speaking.value = null
     return
   }
-  stop()
+  ttsStop()
   speaking.value = pane
-  tts(text, lang, {
+  ttsSpeak(text, lang, {
     onEnd: () => { speaking.value = null },
     onError: (msg) => { speaking.value = null; showToast(msg, 4000) },
   })

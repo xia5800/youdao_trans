@@ -1,7 +1,6 @@
 use crate::util;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Deserialize)]
 struct YoudaoResponse {
@@ -42,12 +41,8 @@ pub async fn translate(
     let from = source_lang.map(map_lang).unwrap_or("auto");
     let to = map_lang(target_lang);
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("time error: {}", e))?;
-
-    let salt = now.as_millis().to_string();
-    let curtime = now.as_secs().to_string();
+    let salt = util::unix_millis()?.to_string();
+    let curtime = util::unix_secs()?.to_string();
 
     let sign_input = format!("{}{}{}{}{}", app_key, truncate(text), salt, curtime, app_secret);
     let sign = format!("{:x}", Sha256::digest(sign_input.as_bytes()));
