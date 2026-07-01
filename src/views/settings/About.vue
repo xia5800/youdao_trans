@@ -32,7 +32,7 @@
       <span class="tech-badge tech-etc">...</span>
     </div>
 
-    <div class="about-copyright">© 2026 GCC. All rights reserved.</div>
+    <div class="about-copyright">Made with <span class="copyright-heart">♥</span> by GCC · 2026</div>
   </div>
 </template>
 
@@ -126,11 +126,13 @@ const techList = ['Tauri 2', 'Rust', 'Vue 3', 'Vite', 'SQLite']
 }
 
 .about-version {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
   background: var(--bg-hover);
-  padding: 2px 10px;
+  padding: 4px 14px;
   border-radius: 10px;
+  letter-spacing: 0.3px;
 }
 
 /* Section divider */
@@ -238,10 +240,25 @@ const techList = ['Tauri 2', 'Rust', 'Vue 3', 'Vite', 'SQLite']
 
 /* Copyright */
 .about-copyright {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
   position: relative;
   z-index: 1;
   padding-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+.copyright-heart {
+  color: #e74c3c;
+  display: inline-block;
+  animation: heartbeat 1.4s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.2); }
+  35% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  55% { transform: scale(1); }
 }
 </style>
