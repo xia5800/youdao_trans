@@ -11,6 +11,7 @@ const FALLBACK = {
   delayTime: 600,
   storeRecords: true,
   replaceNewlines: false,
+  programmerMode: true,
   autoTranslate: false,
   autoTranslateDelay: 1200,
   hotkeys: { translate: 'Ctrl+Enter', screenshot: 'Alt+W', selectionTranslate: 'Alt+T' },
@@ -71,20 +72,34 @@ async function doSave() {
   try {
     const json = JSON.stringify(state)
     await invoke('save_config', { json })
-    await invoke('reload_hotkeys')
   } catch (e) {
     console.warn('save_config failed:', e)
     const { showToast } = useToast()
-    showToast(`保存设置或注册快捷键失败: ${e}`)
+    showToast(`保存设置失败: ${e}`)
   }
 }
 
 const autoSaveState = computed(() => {
-  const { translatorKeys, ocrKeys, ...rest } = state
+  const { translatorKeys, ocrKeys, hotkeys, ...rest } = state
   return rest
 })
 
 watch(autoSaveState, doSave, { deep: true })
+
+let savingHotkeys = false
+watch(() => state.hotkeys, async (val, old) => {
+  if (!loaded || savingHotkeys) return
+  savingHotkeys = true
+  try {
+    const json = JSON.stringify(state)
+    await invoke('save_config', { json })
+    await invoke('reload_hotkeys')
+  } catch (e) {
+    console.warn('reload_hotkeys failed:', e)
+  } finally {
+    savingHotkeys = false
+  }
+}, { deep: true })
 
 watch(() => state.autoStart, async (val) => {
   if (!loaded) return

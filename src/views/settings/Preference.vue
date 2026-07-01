@@ -35,9 +35,7 @@
         <div class="setting-label">翻译记录</div>
         <div class="setting-desc">是否存储翻译记录</div>
       </div>
-      <label class="checkbox-label">
-        <input type="checkbox" v-model="storeRecords"> 存储翻译记录
-      </label>
+      <SwitchToggle v-model="storeRecords" />
     </div>
 
     <div class="setting-item">
@@ -45,9 +43,15 @@
         <div class="setting-label">文本处理</div>
         <div class="setting-desc">将翻译内容的【换行符】替换为【空格】</div>
       </div>
-      <label class="checkbox-label">
-        <input type="checkbox" v-model="replaceNewlines"> 启用替换
-      </label>
+      <SwitchToggle v-model="replaceNewlines" />
+    </div>
+
+    <div class="setting-item">
+      <div>
+        <div class="setting-label">程序员模式</div>
+        <div class="setting-desc">翻译前自动拆分大小写混合、下划线连接的英文单词，提升翻译准确度</div>
+      </div>
+      <SwitchToggle v-model="programmerMode" />
     </div>
 
     <div class="subsection-title">功能设置</div>
@@ -108,6 +112,7 @@ const {
   delayTime,
   storeRecords,
   replaceNewlines,
+  programmerMode,
   autoTranslate,
   autoTranslateDelay,
 } = useSettings()

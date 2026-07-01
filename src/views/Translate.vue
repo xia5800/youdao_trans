@@ -120,7 +120,7 @@ const targetDropdownRef = ref(null)
 const sourceDropdownOpen = ref(false)
 const targetDropdownOpen = ref(false)
 
-const { activeTranslator, translatorKeys, autoTranslate, autoTranslateDelay, storeRecords, replaceNewlines } = useSettings()
+const { activeTranslator, translatorKeys, autoTranslate, autoTranslateDelay, storeRecords, replaceNewlines, programmerMode } = useSettings()
 const { showToast } = useToast()
 const { useHotkeyListener, hotkeys } = useHotkey()
 const isOcrProcessing = inject('isOcrProcessing', ref(false))
@@ -167,7 +167,10 @@ let debounceTimer = null
 async function doTranslate() {
   const text = sourceText.value
   if (!text || !activeTranslator.value) return
-  const translateText = replaceNewlines.value ? text.replace(/[\r\n]+/g, ' ') : text
+  let translateText = replaceNewlines.value ? text.replace(/[\r\n]+/g, ' ') : text
+  if (programmerMode.value) {
+    translateText = splitProgrammerText(translateText)
+  }
   translating.value = true
   translateError.value = ''
   try {
@@ -338,6 +341,15 @@ function onPaste(e) {
     targetLang.value = detectTargetLang(sourceText.value)
   }
   scheduleTranslate()
+}
+
+function splitProgrammerText(text) {
+  let result = text.replace(/[_-]+/g, ' ')
+  result = result.replace(/([a-z])([A-Z])/g, '$1 $2')
+  result = result.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+  result = result.replace(/([\u4e00-\u9fff\u3400-\u4dbf])([a-zA-Z])/g, '$1 $2')
+  result = result.replace(/([a-zA-Z])([\u4e00-\u9fff\u3400-\u4dbf])/g, '$1 $2')
+  return result.replace(/\s+/g, ' ').trim()
 }
 
 function speak(text, lang, pane) {
@@ -517,7 +529,7 @@ function speak(text, lang, pane) {
 
 .pane {
   flex: 1;
-  padding: 20px 24px;
+  padding: 20px 12px 20px 24px;
   border-right: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
@@ -525,6 +537,7 @@ function speak(text, lang, pane) {
 }
 
 .pane:last-child {
+  padding: 20px 24px 20px 12px;
   border-right: none;
 }
 

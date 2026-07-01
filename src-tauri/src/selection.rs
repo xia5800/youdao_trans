@@ -123,6 +123,7 @@ pub struct SelectionPayload {
     pub translator_keys: std::collections::HashMap<String, String>,
     pub is_translating: bool,
     pub store_records: bool,
+    pub programmer_mode: bool,
 }
 
 pub struct SelectionState(pub std::sync::Mutex<Option<SelectionPayload>>);
@@ -140,6 +141,7 @@ fn read_selection_config(
     std::collections::HashMap<String, String>,
     bool,
     u64,
+    bool,
 ) {
     #[derive(serde::Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -152,15 +154,90 @@ fn read_selection_config(
         store_records: bool,
         #[serde(default = "default_delay")]
         delay_time: u64,
+        #[serde(default)]
+        programmer_mode: bool,
     }
     fn default_true() -> bool { true }
     fn default_delay() -> u64 { constants::DEFAULT_DELAY_TIME_MS }
 
     if let Ok(c) = serde_json::from_str::<SelectionConfigRaw>(config_json) {
-        (c.active_translator, c.translator_keys, c.store_records, c.delay_time)
+        (c.active_translator, c.translator_keys, c.store_records, c.delay_time, c.programmer_mode)
     } else {
-        (None, std::collections::HashMap::new(), true, constants::DEFAULT_DELAY_TIME_MS)
+        (None, std::collections::HashMap::new(), true, constants::DEFAULT_DELAY_TIME_MS, true)
     }
+}
+
+fn split_programmer_text(text: &str) -> String {
+    let mut result = text.replace(|c: char| c == '_' || c == '-', " ");
+    // Insert space at camelCase boundaries: aB → a B
+    result = regex_for_camel(&result);
+    // Insert space between Chinese and English
+    result = regex_for_cjk_boundary(&result);
+    // Collapse whitespace
+    let mut out = String::with_capacity(result.len());
+    let mut prev_space = false;
+    for ch in result.chars() {
+        if ch.is_whitespace() {
+            if !prev_space {
+                out.push(' ');
+                prev_space = true;
+            }
+        } else {
+            out.push(ch);
+            prev_space = false;
+        }
+    }
+    out.trim().to_string()
+}
+
+fn regex_for_camel(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() * 2);
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        out.push(chars[i]);
+        if i + 1 < chars.len() {
+            let cur = chars[i];
+            let next = chars[i + 1];
+            // aB or ABc → insert space
+            if (cur.is_ascii_lowercase() && next.is_ascii_uppercase())
+                || (i + 2 < chars.len()
+                    && cur.is_ascii_uppercase()
+                    && next.is_ascii_uppercase()
+                    && chars[i + 2].is_ascii_lowercase())
+            {
+                out.push(' ');
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn regex_for_cjk_boundary(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() * 2);
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        out.push(chars[i]);
+        if i + 1 < chars.len() {
+            let cur = chars[i];
+            let next = chars[i + 1];
+            let cur_is_cjk = is_cjk(cur);
+            let next_is_ascii_letter = next.is_ascii_alphabetic();
+            let cur_is_ascii_letter = cur.is_ascii_alphabetic();
+            let next_is_cjk = is_cjk(next);
+            if (cur_is_cjk && next_is_ascii_letter) || (cur_is_ascii_letter && next_is_cjk) {
+                out.push(' ');
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn is_cjk(c: char) -> bool {
+    matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}')
 }
 
 fn load_config_any() -> Option<String> {
@@ -264,6 +341,7 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
         translator_keys: std::collections::HashMap::new(),
         is_translating: true,
         store_records: false,
+        programmer_mode: false,
     };
     show_popup_with_payload(&app, &loading_payload, cx, cy);
 
@@ -277,7 +355,7 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
         }
     };
 
-    let (active_translator, translator_keys, store_records, delay_time) =
+    let (active_translator, translator_keys, store_records, delay_time, programmer_mode) =
         read_selection_config(&config_json);
 
     let source_text = match crate::selection::get_selected_text(delay_time) {
@@ -294,6 +372,7 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
                 translator_keys: std::collections::HashMap::new(),
                 is_translating: false,
                 store_records: false,
+                programmer_mode: false,
             };
             payload_for_window(&app, &error_payload);
             if let Some(popup) = app.get_webview_window(constants::WINDOW_SELECTION_POPUP) {
@@ -319,14 +398,21 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
         translator_keys: translator_keys.clone(),
         is_translating: true,
         store_records,
+        programmer_mode,
     };
     payload_for_window(&app, &translating_payload);
     if let Some(popup) = app.get_webview_window(constants::WINDOW_SELECTION_POPUP) {
         let _ = popup.set_focus();
     }
 
+    let translate_text = if programmer_mode {
+        split_programmer_text(&source_text)
+    } else {
+        source_text.clone()
+    };
+
     let translated_text = match crate::translate::run(crate::translate::TranslateArgs {
-        text: source_text.clone(),
+        text: translate_text,
         source_lang: None,
         target_lang: target_lang.clone(),
         active_translator: active_translator.clone(),
@@ -346,6 +432,7 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
                 translator_keys,
                 is_translating: false,
                 store_records,
+                programmer_mode,
             };
             payload_for_window(&app, &failed);
             return;
@@ -362,6 +449,7 @@ pub async fn handle_selection_translate(app: tauri::AppHandle) {
         translator_keys,
         is_translating: false,
         store_records,
+        programmer_mode,
     };
     payload_for_window(&app, &final_payload);
 }

@@ -67,6 +67,7 @@ const currentTargetLang = ref('zh')
 const activeTranslator = ref(null)
 const translatorKeys = ref({})
 const isTranslating = ref(true)
+const programmerMode = ref(false)
 
 const { speak, stop } = useTts()
 let unlistenUpdate = null
@@ -88,6 +89,7 @@ onMounted(async () => {
     activeTranslator.value = data.active_translator || null
     translatorKeys.value = data.translator_keys || {}
     isTranslating.value = data.is_translating ?? false
+    programmerMode.value = data.programmer_mode ?? false
   } catch (e) {
     console.warn('popup: no payload', e)
     await appWindow.close()
@@ -101,6 +103,7 @@ onMounted(async () => {
     activeTranslator.value = data.active_translator ?? activeTranslator.value
     translatorKeys.value = data.translator_keys ?? translatorKeys.value
     isTranslating.value = data.is_translating ?? false
+    programmerMode.value = data.programmer_mode ?? programmerMode.value
     // Auto-save to history when translation finishes
     if (!isTranslating.value && data.store_records && data.source_text && data.translated_text) {
       saveToHistory(data)
@@ -148,12 +151,25 @@ function speakResult() {
   speak(translatedText.value, currentTargetLang.value)
 }
 
+function splitProgrammerText(text) {
+  let result = text.replace(/[_-]+/g, ' ')
+  result = result.replace(/([a-z])([A-Z])/g, '$1 $2')
+  result = result.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+  result = result.replace(/([\u4e00-\u9fff\u3400-\u4dbf])([a-zA-Z])/g, '$1 $2')
+  result = result.replace(/([a-zA-Z])([\u4e00-\u9fff\u3400-\u4dbf])/g, '$1 $2')
+  return result.replace(/\s+/g, ' ').trim()
+}
+
 async function retranslate() {
   if (!sourceText.value || isTranslating.value) return
   isTranslating.value = true
   try {
+    let text = sourceText.value
+    if (programmerMode.value) {
+      text = splitProgrammerText(text)
+    }
     const result = await invoke('translate_command', {
-      text: sourceText.value,
+      text,
       sourceLang: null,
       targetLang: currentTargetLang.value,
       activeTranslator: activeTranslator.value,

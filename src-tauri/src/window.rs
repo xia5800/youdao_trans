@@ -109,6 +109,7 @@ pub fn show_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
     let w = app
         .get_webview_window(&label)
         .ok_or(format!("window '{}' not found", &label))?;
+    w.show().map_err(|e| e.to_string())?;
     w.unminimize().map_err(|e| e.to_string())?;
     w.set_focus().map_err(|e| e.to_string())?;
     Ok(())

@@ -255,6 +255,7 @@ async function cancel() {
   await nextTick()
   await new Promise(r => requestAnimationFrame(r))
   await invoke('cleanup_screenshot')
+  await invoke('show_window', { label: 'main' })
   await appWindow.hide()
 }
 
