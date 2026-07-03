@@ -22,6 +22,7 @@ import { onMounted, onUnmounted, ref, provide } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification'
 import TitleBar from './components/TitleBar.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import { useToast } from './composables/useToast.js'
@@ -41,12 +42,9 @@ let unlistenNavigate = null
 let unlistenShortcutsToggled = null
 let unlistenCheckOcr = null
 onMounted(async () => {
-  // 请求通知权限（Windows Toast）
-  import('@tauri-apps/plugin-notification').then(({ isPermissionGranted, requestPermission }) => {
-    isPermissionGranted().then((granted) => { if (!granted) requestPermission() })
-  })
+  const granted = await isPermissionGranted()
+  if (!granted) requestPermission()
 
-  // 禁用默认右键菜单
   document.addEventListener('contextmenu', (e) => e.preventDefault())
 
   load()

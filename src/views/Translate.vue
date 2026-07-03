@@ -49,15 +49,14 @@
               <ToolIcon icon="speaker" tooltip="朗读" :speaking="speaking === 'source'" @click="speak(sourceText, sourceLang, 'source')" />
             </div>
           </div>
-          <div
-            class="input-content"
-            contenteditable="true"
+          <textarea
+            class="input-content textarea-input"
             ref="sourceInput"
+            :value="sourceText"
             @input="onInput"
-            @paste="onPaste"
             @keydown="onKeydown"
-            data-placeholder="输入或者粘贴要翻译的文本..."
-          ></div>
+            placeholder="输入或者粘贴要翻译的文本..."
+          ></textarea>
         </div>
         <div class="pane">
           <div class="pane-header">
@@ -270,9 +269,6 @@ onMounted(async () => {
   document.addEventListener('click', onClickOutside)
   unlistenOcr = await listen('ocr-result', (event) => {
     const text = event.payload
-    if (sourceInput.value) {
-      sourceInput.value.innerText = text
-    }
     sourceText.value = text
     charCount.value = text.length
     if (sourceLang.value === 'auto') {
@@ -286,14 +282,6 @@ onUnmounted(() => {
 })
 
 function onKeydown(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-    e.preventDefault()
-    const sel = window.getSelection()
-    const range = document.createRange()
-    range.selectNodeContents(sourceInput.value)
-    sel.removeAllRanges()
-    sel.addRange(range)
-  }
 }
 
 function clearText() {
@@ -301,13 +289,10 @@ function clearText() {
   targetText.value = ''
   charCount.value = 0
   translateError.value = ''
-  if (sourceInput.value) {
-    sourceInput.value.innerText = ''
-  }
 }
 
 function onInput(e) {
-  sourceText.value = e.target.innerText
+  sourceText.value = e.target.value
   charCount.value = sourceText.value.length
   if (sourceLang.value === 'auto') {
     targetLang.value = detectTargetLang(sourceText.value)
@@ -330,18 +315,7 @@ function detectTargetLang(text) {
   return containsChinese(text) ? 'en' : 'zh'
 }
 
-function onPaste(e) {
-  e.preventDefault()
-  const text = (e.clipboardData || window.clipboardData).getData('text/plain')
-  if (!text) return
-  document.execCommand('insertText', false, text)
-  sourceText.value = sourceInput.value?.innerText || text
-  charCount.value = sourceText.value.length
-  if (sourceLang.value === 'auto') {
-    targetLang.value = detectTargetLang(sourceText.value)
-  }
-  scheduleTranslate()
-}
+
 
 function splitProgrammerText(text) {
   let result = text.replace(/[_-]+/g, ' ')
@@ -642,16 +616,16 @@ function speak(text, lang, pane) {
   min-height: 0;
 }
 
-.input-content[contenteditable="true"] {
-  cursor: text;
+.textarea-input {
+  resize: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
 }
 
-.input-content:empty:before {
-  content: attr(data-placeholder);
+.textarea-input::placeholder {
   color: var(--text-tertiary);
   font-size: 18px;
-  display: block;
-  pointer-events: none;
 }
 
 .output-content {

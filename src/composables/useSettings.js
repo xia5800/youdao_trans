@@ -79,12 +79,9 @@ async function doSave() {
   }
 }
 
-const autoSaveState = computed(() => {
-  const { translatorKeys, ocrKeys, hotkeys, ...rest } = state
-  return rest
-})
+const autoSaveWatchKeys = ['theme', 'autoStart', 'delayTime', 'storeRecords', 'replaceNewlines', 'programmerMode', 'autoTranslate', 'autoTranslateDelay', 'activeTranslator', 'activeOcr', 'closeBehavior', 'showScreenshotCrosshair', 'ttsEngine', 'ttsVoice']
 
-watch(autoSaveState, doSave, { deep: true })
+watch(autoSaveWatchKeys.map(k => () => state[k]), doSave)
 
 let savingHotkeys = false
 watch(() => state.hotkeys, async (val, old) => {
