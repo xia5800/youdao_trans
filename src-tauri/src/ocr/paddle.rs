@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 use base64::Engine;
 use oar_ocr::prelude::*;
 use oar_ocr::domain::tasks::TextDetectionConfig;
@@ -77,7 +78,8 @@ pub fn check_model_files() -> std::collections::HashMap<String, bool> {
         .collect()
 }
 
-static ENGINE: OnceLock<Mutex<Option<OcrEngine>>> = OnceLock::new();
+static ENGINE: OnceLock<Mutex<(Option<OcrEngine>, Instant)>> = OnceLock::new();
+const ENGINE_IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 
 fn init_engine() -> Result<OcrEngine, String> {
     let dir = models_dir();
@@ -119,16 +121,20 @@ fn init_engine() -> Result<OcrEngine, String> {
     Ok(OcrEngine { engine })
 }
 
-fn get_engine() -> Result<&'static Mutex<Option<OcrEngine>>, String> {
-    let cell = ENGINE.get_or_init(|| Mutex::new(None));
+fn get_engine() -> Result<&'static Mutex<(Option<OcrEngine>, Instant)>, String> {
+    let cell = ENGINE.get_or_init(|| Mutex::new((None, Instant::now())));
 
     let mut guard = cell.lock().map_err(|e| format!("引擎锁异常: {}", e))?;
-    if guard.is_none() {
-        *guard = Some(init_engine().map_err(|e| {
+    if guard.0.is_none() || guard.1.elapsed() > ENGINE_IDLE_TIMEOUT {
+        if guard.0.is_some() {
+            log::info!("PaddleOCR 引擎闲置超时，重新初始化");
+        }
+        guard.0 = Some(init_engine().map_err(|e| {
             log::error!("PaddleOCR 引擎初始化失败: {}", e);
             format!("PaddleOCR 引擎初始化失败: {}", e)
         })?);
     }
+    guard.1 = Instant::now();
     drop(guard);
 
     Ok(cell)
@@ -138,7 +144,7 @@ pub fn unload_engine() {
     if let Some(cell) = ENGINE.get() {
         if let Ok(mut guard) = cell.lock() {
             log::info!("卸载 PaddleOCR 引擎，释放内存");
-            *guard = None;
+            guard.0 = None;
         }
     }
 }
@@ -175,8 +181,6 @@ pub async fn ocr(base64_img: &str, _keys: &HashMap<String, String>) -> Result<St
             }
         }
     }
-
-    unload_engine();
 
     if all_texts.is_empty() {
         return Err("未识别到文字".to_string());

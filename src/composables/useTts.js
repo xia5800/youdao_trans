@@ -135,6 +135,10 @@ export function useTts() {
         try { sourceNode.stop() } catch (_) {}
         sourceNode = null
       }
+      if (audioCtx) {
+        audioCtx.close()
+        audioCtx = null
+      }
       return
     }
     if (window.speechSynthesis) {
@@ -142,5 +146,9 @@ export function useTts() {
     }
   }
 
-  return { speak, stop }
+  function close() {
+    stop()
+  }
+
+  return { speak, stop, close }
 }

@@ -151,7 +151,10 @@ fn default_path() -> PathBuf {
 
 #[cfg(not(debug_assertions))]
 fn derive_key_with_salt(salt: &[u8]) -> Result<[u8; 32], String> {
-    let uid = machine_uid::get().map_err(|e| format!("machine_uid: {}", e))?;
+    static MACHINE_ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let uid = MACHINE_ID.get_or_init(|| {
+        machine_uid::get().unwrap_or_else(|_| "fallback-id".to_string())
+    });
     let mut hasher = Sha256::new();
     hasher.update(uid.as_bytes());
     hasher.update(salt);
