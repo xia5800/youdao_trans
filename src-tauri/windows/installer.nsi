@@ -5,7 +5,7 @@ Unicode true
 ManifestDPIAware true
 
 !define PRODUCT_NAME "优道翻译"
-!define PRODUCT_VERSION "1.0.5"
+!define PRODUCT_VERSION "1.0.6"
 !define PRODUCT_PUBLISHER "优道"
 !define PRODUCT_WEB_SITE ""
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\app.exe"
