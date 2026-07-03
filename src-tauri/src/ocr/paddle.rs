@@ -162,7 +162,7 @@ pub async fn ocr(base64_img: &str, _keys: &HashMap<String, String>) -> Result<St
     let rgb_img = img.to_rgb8();
 
     let guard = cell.lock().map_err(|e| format!("引擎锁异常: {}", e))?;
-    let eng = guard.as_ref().ok_or("PaddleOCR 引擎未初始化")?;
+    let eng = guard.0.as_ref().ok_or("PaddleOCR 引擎未初始化")?;
 
     let results = eng.engine
         .predict(vec![rgb_img])
