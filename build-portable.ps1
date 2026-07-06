@@ -22,13 +22,13 @@ try {
     Pop-Location
 }
 
-# Step 3: Verify app.exe exists
-$appExe = Join-Path $PSScriptRoot "src-tauri\target\release\app.exe"
+# Step 3: Verify YouDaoTranslate.exe exists
+$appExe = Join-Path $PSScriptRoot "src-tauri\target\release\YouDaoTranslate.exe"
 if (-not (Test-Path -LiteralPath $appExe)) {
-    Write-Error "app.exe not found. Build may have failed."
+    Write-Error "YouDaoTranslate.exe not found. Build may have failed."
     exit 1
 }
-Write-Host "app.exe size: $([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB" -ForegroundColor Green
+Write-Host "YouDaoTranslate.exe size: $([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB" -ForegroundColor Green
 
 # Step 4: Create portable directory structure
 Write-Host "=== Step 3/3: Assembling portable directory" -ForegroundColor Cyan
@@ -40,7 +40,7 @@ if (Test-Path -LiteralPath $OUTPUT_DIR) {
 }
 New-Item -ItemType Directory -Path $OUTPUT_DIR -Force | Out-Null
 # Copy files
-Copy-Item -LiteralPath $appExe -Destination (Join-Path $OUTPUT_DIR "app.exe") -Force
+Copy-Item -LiteralPath $appExe -Destination (Join-Path $OUTPUT_DIR "YouDaoTranslate.exe") -Force
 
 # Step 5: Show result
 $totalSize = [math]::Round((Get-ChildItem -LiteralPath $OUTPUT_DIR -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 2)

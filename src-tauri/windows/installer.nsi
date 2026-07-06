@@ -6,7 +6,7 @@ ManifestDPIAware true
 
 !define PRODUCT_NAME "优道翻译"
 !define PRODUCT_VERSION "1.0.7"
-!define PRODUCT_PUBLISHER "优道"
+!define PRODUCT_PUBLISHER "GCC"
 !define PRODUCT_WEB_SITE ""
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\YouDaoTranslate.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"

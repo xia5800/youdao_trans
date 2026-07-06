@@ -35,6 +35,7 @@
     }
   },
   "bundle": {
+    "publisher": "GCC",
     "active": true,
     "targets": [
       "nsis"

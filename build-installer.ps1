@@ -28,12 +28,12 @@ try {
 
 # Step 4: Verify artifacts
 Write-Host "=== Step 3/5: Verifying artifacts" -ForegroundColor Cyan
-$appExe = Join-Path $PSScriptRoot "src-tauri\target\release\app.exe"
+$appExe = Join-Path $PSScriptRoot "src-tauri\target\release\YouDaoTranslate.exe"
 if (-not (Test-Path -LiteralPath $appExe)) {
-    Write-Error "app.exe not found. Build may have failed."
+    Write-Error "YouDaoTranslate.exe not found. Build may have failed."
     exit 1
 }
-Write-Host "  app.exe: $([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB" -ForegroundColor Green
+Write-Host "  YouDaoTranslate.exe: $([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB" -ForegroundColor Green
 
 # Step 5: Create output directory
 $outDir = Join-Path $PSScriptRoot "dist-installer"
