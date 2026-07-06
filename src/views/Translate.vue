@@ -323,7 +323,7 @@ function splitProgrammerText(text) {
   result = result.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
   result = result.replace(/([\u4e00-\u9fff\u3400-\u4dbf])([a-zA-Z])/g, '$1 $2')
   result = result.replace(/([a-zA-Z])([\u4e00-\u9fff\u3400-\u4dbf])/g, '$1 $2')
-  return result.replace(/\s+/g, ' ').trim()
+  return result.replace(/[^\S\n\r]+/g, ' ').trim()
 }
 
 function speak(text, lang, pane) {

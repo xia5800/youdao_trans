@@ -177,7 +177,7 @@ fn split_programmer_text(text: &str) -> String {
     let mut out = String::with_capacity(result.len());
     let mut prev_space = false;
     for ch in result.chars() {
-        if ch.is_whitespace() {
+        if ch.is_whitespace() && ch != '\n' && ch != '\r' {
             if !prev_space {
                 out.push(' ');
                 prev_space = true;
