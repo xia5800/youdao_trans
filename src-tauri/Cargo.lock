@@ -3,6 +3,48 @@
 version = 3
 
 [[package]]
+name = "YouDaoTranslate"
+version = "1.0.7"
+dependencies = [
+ "aes-gcm",
+ "arboard",
+ "base64 0.22.1",
+ "chrono",
+ "fern",
+ "futures",
+ "hf-fetch-model",
+ "hmac",
+ "image 0.25.10",
+ "log",
+ "machine-uid",
+ "md-5",
+ "mouse_position",
+ "msedge-tts",
+ "oar-ocr",
+ "ort",
+ "reqwest 0.11.27",
+ "rusqlite",
+ "rustls",
+ "screenshots",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2 0.10.9",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-log",
+ "tauri-plugin-notification",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "time",
+ "tokio",
+ "winreg 0.10.1",
+ "zip",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -179,48 +221,6 @@ name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
-
-[[package]]
-name = "app"
-version = "1.0.7"
-dependencies = [
- "aes-gcm",
- "arboard",
- "base64 0.22.1",
- "chrono",
- "fern",
- "futures",
- "hf-fetch-model",
- "hmac",
- "image 0.25.10",
- "log",
- "machine-uid",
- "md-5",
- "mouse_position",
- "msedge-tts",
- "oar-ocr",
- "ort",
- "reqwest 0.11.27",
- "rusqlite",
- "rustls",
- "screenshots",
- "serde",
- "serde_json",
- "sha1",
- "sha2 0.10.9",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-log",
- "tauri-plugin-notification",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "time",
- "tokio",
- "winreg 0.10.1",
- "zip",
-]
 
 [[package]]
 name = "approx"

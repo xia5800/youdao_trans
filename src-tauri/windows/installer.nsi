@@ -8,7 +8,7 @@ ManifestDPIAware true
 !define PRODUCT_VERSION "1.0.7"
 !define PRODUCT_PUBLISHER "优道"
 !define PRODUCT_WEB_SITE ""
-!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\app.exe"
+!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\YouDaoTranslate.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKCU"
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
@@ -32,6 +32,9 @@ Var StartMenuFolder
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_STARTMENU Application $StartMenuFolder
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_FINISHPAGE_RUN "$INSTDIR\YouDaoTranslate.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "立即运行 优道翻译"
+!define MUI_FINISHPAGE_NOREBOOTSUPPORT
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -46,6 +49,13 @@ InstallDir "$LOCALAPPDATA\Programs\YouDaoTranslate"
 InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
+
+; Auto-close running instance before install
+Function .onInit
+  nsExec::Exec '"$WINDIR\system32\taskkill.exe" /f /im YouDaoTranslate.exe'
+  Pop $0
+  Sleep 300
+FunctionEnd
 
 ; Check WebView2 and install if missing (for Windows 10 compatibility)
 Section "-WebView2"
@@ -75,27 +85,31 @@ SectionEnd
 Section "MainProgram" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  File "..\target\release\app.exe"
+  File "..\target\release\YouDaoTranslate.exe"
 
   ; OCR models are downloaded on demand ― not bundled
 
   ; Create start menu shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-  CreateShortcut "$SMPROGRAMS\$StartMenuFolder\优道翻译.lnk" "$INSTDIR\app.exe"
+  CreateShortcut "$SMPROGRAMS\$StartMenuFolder\优道翻译.lnk" "$INSTDIR\YouDaoTranslate.exe"
   CreateShortcut "$SMPROGRAMS\$StartMenuFolder\卸载 优道翻译.lnk" "$INSTDIR\uninst.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
 
   ; Create desktop shortcut
-  CreateShortcut "$DESKTOP\优道翻译.lnk" "$INSTDIR\app.exe"
+  CreateShortcut "$DESKTOP\优道翻译.lnk" "$INSTDIR\YouDaoTranslate.exe"
 SectionEnd
 
 Section -Post
   WriteUninstaller "$INSTDIR\uninst.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\app.exe"
+
+  ; Remove legacy app.exe from older versions
+  Delete "$INSTDIR\app.exe"
+
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\YouDaoTranslate.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "$(^Name)"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\app.exe"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\YouDaoTranslate.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
@@ -106,7 +120,7 @@ Section Uninstall
   ReadRegStr $StartMenuFolder ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "StartMenuFolder"
 
   Delete "$INSTDIR\uninst.exe"
-  Delete "$INSTDIR\app.exe"
+  Delete "$INSTDIR\YouDaoTranslate.exe"
   RMDir "$INSTDIR\db"
   RMDir "$INSTDIR\config"
   RMDir "$INSTDIR\models"

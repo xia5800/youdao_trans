@@ -1,5 +1,5 @@
 [package]
-name = "app"
+name = "YouDaoTranslate"
 version = "1.0.7"
 description = "一款简洁、高效、高颜值的输入、截图、划词翻译软件"
 authors = ["GCC"]
