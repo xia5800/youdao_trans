@@ -4,7 +4,8 @@
 $ErrorActionPreference = "Stop"
 
 $PROJECT_NAME = "YoudaoTranslate"
-$OUTPUT_DIR = Join-Path $PSScriptRoot "dist-portable\$PROJECT_NAME"
+$APP_VERSION = (Get-Content (Join-Path $PSScriptRoot "src-tauri\tauri.conf.json") | ConvertFrom-Json).version
+$OUTPUT_DIR = Join-Path $PSScriptRoot "dist-portable\${PROJECT_NAME}_${APP_VERSION}_portable"
 
 # Step 1: Build frontend
 Write-Host "=== Step 1/3: Building frontend (npm run build)" -ForegroundColor Cyan

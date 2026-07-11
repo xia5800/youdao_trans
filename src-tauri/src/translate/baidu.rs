@@ -68,7 +68,7 @@ pub async fn translate(
     }
 
     body.trans_result
-        .and_then(|mut r| r.pop())
-        .map(|t| t.dst)
+        .map(|r| r.into_iter().map(|t| t.dst).collect::<Vec<_>>().join("\n"))
+        .filter(|s| !s.is_empty())
         .ok_or_else(|| "百度翻译返回结果为空".to_string())
 }

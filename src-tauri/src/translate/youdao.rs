@@ -82,6 +82,7 @@ pub async fn translate(
     }
 
     body.translation
-        .and_then(|mut t| t.pop())
+        .map(|t| t.join("\n"))
+        .filter(|s| !s.is_empty())
         .ok_or_else(|| "有道翻译返回结果为空".to_string())
 }

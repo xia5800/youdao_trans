@@ -1,10 +1,7 @@
 <template>
   <div class="title-bar" data-tauri-drag-region @dblclick="toggleMaximize" @mousedown="onDragStart">
     <div class="title-bar-left">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" fill="var(--accent)" opacity="0.2" />
-        <text x="12" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)" font-family="inherit">Y</text>
-      </svg>
+      <img src="/logo.png" width="18" height="18" alt="优道翻译">
       <span class="title-text">优道翻译</span>
     </div>
     <div class="title-bar-center" />

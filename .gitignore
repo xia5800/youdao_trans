@@ -38,3 +38,10 @@ npm-debug.log*
 /config/
 /db/
 /models/
+
+## 本地工具脚本
+clean-all.ps1
+
+## 移动端图标（桌面应用不需要）
+src-tauri/icons/android/
+src-tauri/icons/ios/
